@@ -87,6 +87,13 @@ export function LoginForm() {
         Masuk
       </Button>
 
+      <p className="text-sm text-ink-600 text-center">
+        Belum punya akun?{' '}
+        <Link href="/daftar" className="font-semibold text-ink-900 underline underline-offset-4">
+          Daftar sekarang
+        </Link>
+      </p>
+
       <div className="rounded-[12px] bg-cream-100 p-3.5 text-xs text-ink-600 space-y-1">
         <p className="font-semibold text-ink-900">Akun contoh (data sintetis):</p>
         <p>Admin: <code className="text-ink-900">admin@limms.ac.id</code> / <code>admin123</code></p>
