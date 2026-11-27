@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Table';
+import { AssetFilterBar } from '@/components/app/AssetFilterBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,100 +107,15 @@ export default async function AsetListPage({ searchParams }) {
       </div>
 
       {/* Filter Toolbar */}
-      <form method="GET" action="/aset" className="rounded-[20px] bg-white border border-line-200 p-4 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Cari kode atau nama..."
-            className="lg:col-span-2 h-10 px-3.5 rounded-[12px] border border-line-200 text-sm focus:outline-none focus:border-ink-900"
-          />
-          <select
-            name="kategori"
-            defaultValue={kategori}
-            className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white"
-          >
-            <option value="">Semua kategori</option>
-            {categoriesRes.rows.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="lokasi"
-            defaultValue={lokasi}
-            className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white"
-          >
-            <option value="">Semua lokasi</option>
-            {locationsRes.rows.map((l) => (
-              <option key={l.id} value={l.name}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="kondisi"
-            defaultValue={kondisi}
-            className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white"
-          >
-            <option value="">Semua kondisi</option>
-            <option value="good">Baik</option>
-            <option value="needs_attention">Perlu perhatian</option>
-            <option value="damaged">Rusak</option>
-          </select>
-          <select
-            name="status"
-            defaultValue={status}
-            className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white"
-          >
-            <option value="">Semua status</option>
-            <option value="available">Tersedia</option>
-            <option value="borrowed">Dipinjam</option>
-            <option value="maintenance">Pemeliharaan</option>
-            <option value="inactive">Nonaktif</option>
-          </select>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/aset"
-              className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                !kategori ? 'bg-ink-900 text-white border-ink-900' : 'bg-cream-50 text-ink-700 border-line-200'
-              }`}
-            >
-              Semua
-            </Link>
-            {categoriesRes.rows.slice(0, 5).map((c) => (
-              <Link
-                key={c.id}
-                href={buildHref(1, { kategori: c.name })}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                  kategori === c.name
-                    ? 'bg-lime-400 text-ink-900 border-lime-400'
-                    : 'bg-cream-50 text-ink-700 border-line-200 hover:bg-cream-100'
-                }`}
-              >
-                {c.name}
-              </Link>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            {hasFilters && (
-              <Link href="/aset">
-                <Button variant="ghost" size="sm">
-                  Reset filter
-                </Button>
-              </Link>
-            )}
-            <Button type="submit" variant="dark" size="sm">
-              Terapkan
-            </Button>
-          </div>
-        </div>
-      </form>
+      <AssetFilterBar
+        initialQ={q}
+        initialKategori={kategori}
+        initialLokasi={lokasi}
+        initialKondisi={kondisi}
+        initialStatus={status}
+        categories={categoriesRes.rows}
+        locations={locationsRes.rows}
+      />
 
       {assetsRes.rows.length === 0 ? (
         hasFilters ? (
