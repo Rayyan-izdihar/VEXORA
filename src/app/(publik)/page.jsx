@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Check, Package, ArrowLeftRight, Wrench, Hexagon } from 'lucide-react';
 import { query } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
@@ -61,8 +62,14 @@ async function getLandingStats() {
   }
 }
 
-export default async function LandingPage() {
-  const [user, stats] = await Promise.all([getCurrentUser(), getLandingStats()]);
+export default async function LandingPage({ searchParams }) {
+  const [user, params] = await Promise.all([getCurrentUser(), searchParams]);
+
+  if (user && params?.beranda !== '1') {
+    redirect('/dashboard');
+  }
+
+  const stats = await getLandingStats();
 
   return (
     <div className="min-h-screen bg-white text-ink-900">
