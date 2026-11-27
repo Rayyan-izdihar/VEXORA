@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowUpRight, Hexagon } from 'lucide-react';
+import { Hexagon } from 'lucide-react';
 import { getCurrentUser } from '@/lib/auth';
 import { LoginForm } from '@/components/app/LoginForm';
 
@@ -46,9 +46,6 @@ export default async function MasukPage() {
             <p className="text-2xl font-semibold text-white leading-snug max-w-sm">
               Dari peminjaman sampai pemeliharaan, semua tercatat.
             </p>
-            <span className="w-12 h-12 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center shrink-0">
-              <ArrowUpRight className="w-5 h-5" />
-            </span>
           </div>
         </div>
       </div>

@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   Play,
-  ArrowUpRight,
   ArrowUp,
 } from 'lucide-react';
 import { ArrowPill } from '@/components/ui/ArrowPill';
@@ -64,10 +63,10 @@ export function LandingNavbar({ isLoggedIn }) {
                 Masuk
               </Link>
               <Link
-                href="/masuk"
+                href="/daftar"
                 className="h-10 px-5 rounded-full bg-lime-400 text-ink-900 font-semibold text-sm inline-flex items-center hover:bg-lime-500 transition-colors"
               >
-                Mulai
+                Daftar
               </Link>
             </>
           )}
@@ -189,9 +188,6 @@ export function ModulePanels() {
                   <span className="text-xs font-semibold text-lime-400 tracking-wider">
                     {mod.num}
                   </span>
-                  <span className="w-8 h-8 rounded-full bg-white/10 inline-flex items-center justify-center">
-                    <ArrowUpRight className="w-4 h-4 text-lime-400" />
-                  </span>
                 </div>
 
                 {isOpen ? (
@@ -203,7 +199,7 @@ export function ModulePanels() {
                     <ArrowPill href={mod.href}>{mod.cta}</ArrowPill>
                   </div>
                 ) : (
-                  <div className="flex-1 flex items-end justify-center pb-4">
+                  <div className="flex-1 flex items-center justify-center">
                     <span className="text-lg font-semibold text-white whitespace-nowrap -rotate-90 origin-center">
                       {mod.title}
                     </span>
@@ -233,7 +229,6 @@ export function ModulePanels() {
                     <span className="text-lime-400 mr-3 text-xs">{mod.num}</span>
                     {mod.title}
                   </span>
-                  <ArrowUpRight className="w-4 h-4 text-lime-400" />
                 </button>
                 {isOpen && (
                   <div className="px-5 pb-5 space-y-3">

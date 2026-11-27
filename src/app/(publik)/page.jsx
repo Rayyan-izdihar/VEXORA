@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowUpRight, Check, Package, ArrowLeftRight, Wrench, Hexagon } from 'lucide-react';
+import { Check, Package, ArrowLeftRight, Wrench, Hexagon } from 'lucide-react';
 import { query } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { formatNumber } from '@/lib/format';
@@ -144,9 +144,6 @@ export default async function LandingPage() {
               </div>
               <div className="flex items-center justify-between pt-4">
                 <span className="text-sm font-semibold underline underline-offset-4">Lihat aset</span>
-                <span className="w-9 h-9 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center transition-transform group-hover:translate-x-1">
-                  <ArrowUpRight className="w-4 h-4" />
-                </span>
               </div>
             </Link>
 
@@ -167,9 +164,6 @@ export default async function LandingPage() {
               </div>
               <div className="flex items-center justify-between pt-4">
                 <span className="text-sm font-semibold underline underline-offset-4">Lihat alur</span>
-                <span className="w-9 h-9 rounded-full bg-ink-900 text-white inline-flex items-center justify-center transition-transform group-hover:translate-x-1">
-                  <ArrowUpRight className="w-4 h-4" />
-                </span>
               </div>
             </Link>
 
@@ -198,9 +192,6 @@ export default async function LandingPage() {
               </div>
               <div className="relative z-10 flex items-center justify-between pt-4">
                 <span className="text-sm font-semibold underline underline-offset-4">Lihat jadwal</span>
-                <span className="w-9 h-9 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center transition-transform group-hover:translate-x-1">
-                  <ArrowUpRight className="w-4 h-4" />
-                </span>
               </div>
             </Link>
           </div>
@@ -367,7 +358,7 @@ export default async function LandingPage() {
                 className="flex items-center gap-3.5 bg-white rounded-[16px] px-5 py-4 border border-line-200"
               >
                 <span className="w-7 h-7 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center shrink-0">
-                  <ArrowUpRight className="w-4 h-4" />
+                  <Check className="w-4 h-4" />
                 </span>
                 <span className="text-sm font-medium text-ink-900">{rule}</span>
               </div>
@@ -413,7 +404,7 @@ export default async function LandingPage() {
                   <span className="font-bold text-lg">LIMMS</span>
                 </div>
                 <p className="text-sm max-w-sm leading-relaxed">
-                  Laboratory Inventory and Maintenance Management System — Kasus Proyek RPL B 2026, Kelompok 10.
+                  Laboratory Inventory and Maintenance Management System 
                 </p>
               </div>
               <div>

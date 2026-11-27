@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -15,20 +15,16 @@ import {
   Bell,
   FileSpreadsheet,
   Users,
-  Search,
+  User,
   LogOut,
   Menu,
   X,
 } from 'lucide-react';
-import { USER_ROLES, getStatusMeta } from '@/lib/status';
-import { formatRelativeTime } from '@/lib/format';
 
-export function AppShell({ user, badges, recentNotifications = [], children }) {
+export function AppShell({ user, badges, children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
 
   const isStaff = user.role === 'administrator' || user.role === 'laboran';
   const isAdmin = user.role === 'administrator';
@@ -56,32 +52,14 @@ export function AppShell({ user, badges, recentNotifications = [], children }) {
     },
     { href: '/laporan', label: 'Laporan', icon: FileSpreadsheet, show: isStaff },
     { href: '/pengguna', label: 'Pengguna', icon: Users, show: isAdmin, divider: true },
+    { href: '/profil', label: 'Profil', icon: User, show: true },
   ].filter((item) => item.show);
-
-  useEffect(() => {
-    function onKeyDown(e) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        document.getElementById('global-asset-search')?.focus();
-      }
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/masuk');
     router.refresh();
   }
-
-  function handleSearchSubmit(e) {
-    e.preventDefault();
-    const q = searchText.trim();
-    router.push(q ? `/aset?q=${encodeURIComponent(q)}` : '/aset');
-  }
-
-  const roleMeta = getStatusMeta(USER_ROLES, user.role);
 
   const sidebarContent = (
     <div className="flex flex-col h-full justify-between p-4">
@@ -175,101 +153,16 @@ export function AppShell({ user, badges, recentNotifications = [], children }) {
 
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="no-print sticky top-0 z-30 bg-cream-50/95 backdrop-blur border-b border-line-200 px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMobileMenu(true)}
-              aria-label="Buka menu navigasi"
-              className="lg:hidden w-10 h-10 rounded-full border border-line-200 bg-white flex items-center justify-center text-ink-900"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <span className="text-sm font-medium text-ink-600 hidden sm:inline">
-              LIMMS Laboratorium
-            </span>
-          </div>
-
-          <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md">
-            <div className="relative">
-              <Search
-                className="w-4 h-4 text-ink-400 absolute left-3.5 top-1/2 -translate-y-1/2"
-                aria-hidden="true"
-              />
-              <input
-                id="global-asset-search"
-                type="search"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Cari kode atau nama aset... (Ctrl+K)"
-                className="w-full h-10 pl-10 pr-4 rounded-full bg-white border border-line-200 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:border-ink-900 focus:ring-2 focus:ring-lime-400"
-              />
-            </div>
-          </form>
-
-          <div className="flex items-center gap-3 relative">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setNotifOpen((v) => !v)}
-                aria-label="Notifikasi"
-                className="relative w-10 h-10 rounded-full bg-white border border-line-200 flex items-center justify-center text-ink-900 hover:bg-cream-100"
-              >
-                <Bell className="w-4 h-4" />
-                {badges.unreadNotifications > 0 && (
-                  <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-lime-400 ring-2 ring-white" />
-                )}
-              </button>
-
-              {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-[20px] bg-white border border-line-200 shadow-[var(--shadow-pop)] overflow-hidden z-50">
-                  <div className="px-4 py-3 border-b border-line-200 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-ink-900">Notifikasi Terbaru</span>
-                    <Link
-                      href="/notifikasi"
-                      onClick={() => setNotifOpen(false)}
-                      className="text-xs font-semibold text-ink-900 underline"
-                    >
-                      Lihat semua
-                    </Link>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-line-200">
-                    {recentNotifications.length === 0 ? (
-                      <div className="p-4 text-sm text-ink-600">Belum ada notifikasi.</div>
-                    ) : (
-                      recentNotifications.map((n) => (
-                        <Link
-                          key={n.id}
-                          href="/notifikasi"
-                          onClick={() => setNotifOpen(false)}
-                          className={`block px-4 py-3 hover:bg-cream-50 ${
-                            !n.read_at ? 'bg-lime-100/60' : ''
-                          }`}
-                        >
-                          <div className="text-sm font-semibold text-ink-900">{n.title}</div>
-                          <div className="text-xs text-ink-600 line-clamp-1 mt-0.5">{n.message}</div>
-                          <div className="text-[11px] text-ink-400 mt-1">
-                            {formatRelativeTime(n.created_at)}
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2.5 pl-2 border-l border-line-200">
-              <div className="w-9 h-9 rounded-full bg-ink-900 text-lime-400 font-bold text-sm flex items-center justify-center">
-                {user.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-              <div className="leading-tight">
-                <div className="text-sm font-semibold text-ink-900">{user.name}</div>
-                <div className="text-xs text-ink-600">{roleMeta.label}</div>
-              </div>
-            </div>
-          </div>
-        </header>
+        <div className="no-print lg:hidden sticky top-0 z-30 bg-cream-50/95 backdrop-blur border-b border-line-200 px-4 h-14 flex items-center">
+          <button
+            type="button"
+            onClick={() => setMobileMenu(true)}
+            aria-label="Buka menu navigasi"
+            className="w-10 h-10 rounded-full border border-line-200 bg-white flex items-center justify-center text-ink-900"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
 
         <main className="flex-1 p-4 sm:p-8 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
