@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+@theme {
+  --color-ink-900: #1C2010;
+  --color-ink-700: #3A3F2C;
+  --color-ink-600: #5E6155;
+  --color-ink-400: #9A9C8F;
+
+  --color-line-200: #E4E1D6;
+
+  --color-cream-50: #FAF8F3;
+  --color-cream-100: #F4F1E8;
+
+  --color-lime-100: #F2F9C9;
+  --color-lime-400: #E0F35A;
+  --color-lime-500: #CFE43A;
+
+  --color-status-success-fg: #2E7D4F;
+  --color-status-success-bg: #E3F3E8;
+  --color-status-warning-fg: #9A6200;
+  --color-status-warning-bg: #FFF1CF;
+  --color-status-danger-fg: #B3261E;
+  --color-status-danger-bg: #FCE4E1;
+  --color-status-info-fg: #1F5FA8;
+  --color-status-info-bg: #E1EDFA;
+  --color-status-neutral-fg: #5B5E52;
+  --color-status-neutral-bg: #ECEAE0;
+
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-pill: 999px;
+
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+
+  --shadow-pop: 0 12px 32px -12px rgba(28, 32, 16, 0.28);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-cream-50);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
