@@ -41,7 +41,6 @@ export function AppShell({ user, badges, children }) {
       label: 'Laporan Kerusakan',
       icon: AlertTriangle,
       show: true,
-      badge: isStaff ? badges.openDamage : 0,
     },
     {
       href: '/notifikasi',
