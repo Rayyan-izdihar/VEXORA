@@ -20,7 +20,10 @@ export function LandingNavbar({ isLoggedIn }) {
         aria-label="Navigasi utama"
         className="max-w-[1240px] mx-auto h-14 px-3 sm:px-5 rounded-full bg-white/95 backdrop-blur border border-line-200 flex items-center justify-between gap-4 shadow-sm"
       >
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+        <Link
+          href={isLoggedIn ? '/?beranda=1' : '/'}
+          className="flex items-center gap-2.5 shrink-0"
+        >
           <span className="w-8 h-8 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center">
             <Hexagon className="w-4 h-4" />
           </span>

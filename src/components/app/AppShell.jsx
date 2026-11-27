@@ -68,7 +68,11 @@ export function AppShell({ user, badges, children }) {
   const sidebarContent = (
     <div className="flex flex-col h-full justify-between p-4">
       <div>
-        <Link href="/" className="flex items-center gap-2.5 px-3 py-2 mb-6">
+        <Link
+          href="/?beranda=1"
+          title="Lihat Beranda"
+          className="flex items-center gap-2.5 px-3 py-2 mb-6"
+        >
           <span className="w-8 h-8 rounded-full bg-lime-400 text-ink-900 inline-flex items-center justify-center shrink-0">
             <Hexagon className="w-4 h-4" />
           </span>
