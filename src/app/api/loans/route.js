@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { withTransaction, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
+import { formatDate, toYmdInTz } from '@/lib/format';
+import { notifyUsers, notifyStaff } from '@/lib/notifications';
 
 function isValidIsoDate(str) {
   if (typeof str !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
@@ -56,10 +58,11 @@ export async function POST(request) {
 
     const result = await withTransaction(async (client) => {
       const { rows: borrowerRows } = await client.query(
-        `SELECT id, is_active FROM users WHERE id = $1 LIMIT 1`,
+        `SELECT id, name, is_active FROM users WHERE id = $1 LIMIT 1`,
         [borrowerId]
       );
-      if (!borrowerRows[0] || !borrowerRows[0].is_active) {
+      const borrower = borrowerRows[0];
+      if (!borrower || !borrower.is_active) {
         return {
           error: 'Peminjam tidak ditemukan atau akun sedang nonaktif.',
           status: 400,
@@ -80,12 +83,71 @@ export async function POST(request) {
         return { error: 'Sebagian aset tidak ditemukan.', status: 404 };
       }
 
-      const unavailable = lockedAssets.filter((a) => a.status !== 'available');
-      if (unavailable.length > 0) {
-        const names = unavailable.map((a) => `${a.name} (${a.asset_code})`).join(', ');
+      const inactiveAssets = lockedAssets.filter((a) => a.status === 'inactive');
+      if (inactiveAssets.length > 0) {
+        const names = inactiveAssets.map((a) => `${a.name} (${a.asset_code})`).join(', ');
         return {
-          error: `${names} baru saja dipinjam orang lain atau sedang tidak tersedia. Pilih aset lain.`,
-          conflictAssetIds: unavailable.map((a) => a.id),
+          error: `${names} berstatus Nonaktif dan tidak dapat dipinjam.`,
+          conflictAssetIds: inactiveAssets.map((a) => a.id),
+          status: 409,
+        };
+      }
+
+      if (directBorrow) {
+        const unavailable = lockedAssets.filter((a) => a.status !== 'available');
+        if (unavailable.length > 0) {
+          const names = unavailable.map((a) => `${a.name} (${a.asset_code})`).join(', ');
+          return {
+            error: `${names} sedang tidak tersedia untuk diserahkan langsung.`,
+            conflictAssetIds: unavailable.map((a) => a.id),
+            status: 409,
+          };
+        }
+      } else {
+        const todayYmd = toYmdInTz(new Date());
+        if (loanDate <= todayYmd) {
+          const inMaint = lockedAssets.filter((a) => a.status === 'maintenance');
+          if (inMaint.length > 0) {
+            const names = inMaint.map((a) => `${a.name} (${a.asset_code})`).join(', ');
+            return {
+              error: `${names} sedang dalam pemeliharaan. Pilih tanggal lain atau aset lain.`,
+              conflictAssetIds: inMaint.map((a) => a.id),
+              status: 409,
+            };
+          }
+        }
+      }
+
+      const { rows: overlapping } = await client.query(
+        `SELECT li.asset_id, a.asset_code, a.name,
+                l.loan_code, l.loan_date, l.expected_return_date
+         FROM loan_items li
+         JOIN loans l ON l.id = li.loan_id
+         JOIN assets a ON a.id = li.asset_id
+         WHERE li.asset_id = ANY($1::uuid[])
+           AND l.status IN ('pending', 'approved', 'borrowed', 'overdue')
+           AND li.item_status IN ('requested', 'approved', 'borrowed')
+           AND l.loan_date <= $2::date
+           AND GREATEST(
+             l.expected_return_date,
+             CASE WHEN l.status IN ('borrowed', 'overdue') THEN CURRENT_DATE ELSE l.expected_return_date END
+           ) >= $3::date`,
+        [assetIds, expectedReturnDate, loanDate]
+      );
+
+      if (overlapping.length > 0) {
+        const conflictMap = new Map();
+        for (const row of overlapping) {
+          if (!conflictMap.has(row.asset_id)) {
+            conflictMap.set(
+              row.asset_id,
+              `${row.name} (${row.asset_code}, ${formatDate(row.loan_date)} – ${formatDate(row.expected_return_date)})`
+            );
+          }
+        }
+        return {
+          error: `Jadwal bentrok pada rentang tanggal tersebut untuk: ${[...conflictMap.values()].join('; ')}.`,
+          conflictAssetIds: [...conflictMap.keys()],
           status: 409,
         };
       }
@@ -116,6 +178,23 @@ export async function POST(request) {
            WHERE id = ANY($1::uuid[])`,
           [assetIds]
         );
+        if (borrowerId !== user.id) {
+          await notifyUsers(client, {
+            userIds: [borrowerId],
+            title: 'Peminjaman dicatat & diserahkan',
+            message: `Peminjaman ${loanCode} (${lockedAssets.length} aset) telah dicatat dan diserahkan kepada Anda. Rencana kembali ${formatDate(expectedReturnDate)}.`,
+            linkUrl: `/peminjaman/${loan.id}`,
+            loanId: loan.id,
+          });
+        }
+      } else {
+        await notifyStaff(client, {
+          title: 'Pengajuan peminjaman baru',
+          message: `${borrower.name} mengajukan peminjaman ${loanCode} (${lockedAssets.length} aset) untuk ${formatDate(loanDate)} – ${formatDate(expectedReturnDate)}.`,
+          linkUrl: `/peminjaman/${loan.id}`,
+          loanId: loan.id,
+          excludeUserId: user.id,
+        });
       }
 
       return { loan, status: 201 };

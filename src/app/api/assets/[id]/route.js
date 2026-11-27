@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, withTransaction, isValidUuid } from '@/lib/db';
+import { query, withTransaction, isValidUuid, isValidUploadUrl } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 const VALID_CONDITIONS = ['good', 'needs_attention', 'damaged'];
@@ -23,6 +23,7 @@ export async function PATCH(request, { params }) {
     const condition = body.condition;
     const status = body.status;
     const acquisitionDate = body.acquisition_date || null;
+    const imageUrl = body.image_url !== undefined ? (body.image_url ? String(body.image_url).trim() : null) : undefined;
     const description = body.description ? String(body.description).trim() : null;
     const notes = body.notes ? String(body.notes).trim() : null;
 
@@ -44,10 +45,13 @@ export async function PATCH(request, { params }) {
     if (!VALID_STATUSES.includes(status)) {
       return NextResponse.json({ error: 'Status operasional aset tidak valid.' }, { status: 400 });
     }
+    if (imageUrl !== undefined && !isValidUploadUrl(imageUrl)) {
+      return NextResponse.json({ error: 'URL foto aset tidak valid.' }, { status: 400 });
+    }
 
     const result = await withTransaction(async (client) => {
       const { rows: currentRows } = await client.query(
-        `SELECT id, status FROM assets WHERE id = $1 FOR UPDATE`,
+        `SELECT id, status, image_url FROM assets WHERE id = $1 FOR UPDATE`,
         [id]
       );
       const current = currentRows[0];
@@ -55,27 +59,29 @@ export async function PATCH(request, { params }) {
         return { error: 'Aset tidak ditemukan.', status: 404 };
       }
 
-        const { rows: activeLoanRows } = await client.query(
-          `SELECT 1 FROM loan_items WHERE asset_id = $1 AND item_status = 'borrowed' LIMIT 1`,
-          [id]
-        );
-        const hasActiveLoan = activeLoanRows.length > 0;
+      const { rows: activeLoanRows } = await client.query(
+        `SELECT 1 FROM loan_items WHERE asset_id = $1 AND item_status = 'borrowed' LIMIT 1`,
+        [id]
+      );
+      const hasActiveLoan = activeLoanRows.length > 0;
 
-        if ((current.status === 'borrowed' || hasActiveLoan) && status !== 'borrowed') {
-          return {
-            error: 'Status aset sedang dipinjam dan tidak dapat diubah manual. Catat pengembalian terlebih dahulu.',
-            status: 409,
-          };
-        }
-        if (status === 'borrowed' && current.status !== 'borrowed') {
-          return {
-            error: 'Status Dipinjam dikelola otomatis oleh transaksi peminjaman.',
-            status: 400,
-          };
-        }
+      if ((current.status === 'borrowed' || hasActiveLoan) && status !== 'borrowed') {
+        return {
+          error: 'Status aset sedang dipinjam dan tidak dapat diubah manual. Catat pengembalian terlebih dahulu.',
+          status: 409,
+        };
+      }
+      if (status === 'borrowed' && current.status !== 'borrowed') {
+        return {
+          error: 'Status Dipinjam dikelola otomatis oleh transaksi peminjaman.',
+          status: 400,
+        };
+      }
 
-        const { rows } = await client.query(
-          `UPDATE assets
+      const nextImageUrl = imageUrl !== undefined ? imageUrl : current.image_url;
+
+      const { rows } = await client.query(
+        `UPDATE assets
          SET asset_code = $1,
              name = $2,
              description = $3,
@@ -84,15 +90,16 @@ export async function PATCH(request, { params }) {
              condition = $6,
              status = $7,
              acquisition_date = $8,
-             notes = $9,
+             image_url = $9,
+             notes = $10,
              updated_at = NOW()
-         WHERE id = $10
+         WHERE id = $11
          RETURNING *`,
-          [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, notes, id]
-        );
+        [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, nextImageUrl, notes, id]
+      );
 
-        return { asset: rows[0], status: 200 };
-      });
+      return { asset: rows[0], status: 200 };
+    });
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: result.status });

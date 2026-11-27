@@ -13,7 +13,7 @@ import {
   LOAN_STATUSES,
   getStatusMeta,
 } from '@/lib/status';
-import { formatDate, daysOverdue } from '@/lib/format';
+import { formatDate, daysOverdue, toYmdInTz } from '@/lib/format';
 
 function getLoanDisplayStatus(loan) {
   const late = ['borrowed', 'overdue'].includes(loan.status)
@@ -28,20 +28,116 @@ function escapeCsvCell(cell) {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
-export function ReportClient({ assets = [], maintenance = [], damages = [], loans = [] }) {
-  const [tab, setTab] = useState('inventaris');
+const STATUS_OPTIONS_BY_TAB = {
+  inventaris: [
+    { value: 'available', label: 'Tersedia' },
+    { value: 'borrowed', label: 'Dipinjam' },
+    { value: 'maintenance', label: 'Pemeliharaan' },
+    { value: 'inactive', label: 'Nonaktif' },
+  ],
+  pemeliharaan: [
+    { value: 'scheduled', label: 'Terjadwal' },
+    { value: 'in_progress', label: 'Berlangsung' },
+    { value: 'completed', label: 'Selesai' },
+    { value: 'cancelled', label: 'Dibatalkan' },
+  ],
+  kerusakan: [
+    { value: 'reported', label: 'Dilaporkan' },
+    { value: 'reviewed', label: 'Ditinjau' },
+    { value: 'in_progress', label: 'Ditangani' },
+    { value: 'resolved', label: 'Selesai' },
+  ],
+  peminjaman: [
+    { value: 'pending', label: 'Menunggu' },
+    { value: 'approved', label: 'Disetujui' },
+    { value: 'borrowed', label: 'Dipinjam' },
+    { value: 'overdue', label: 'Terlambat' },
+    { value: 'completed', label: 'Selesai' },
+    { value: 'rejected', label: 'Ditolak' },
+    { value: 'cancelled', label: 'Dibatalkan' },
+  ],
+};
 
-  const goodCount = assets.filter((a) => a.condition === 'good').length;
-  const goodPct = assets.length > 0 ? Math.round((goodCount / assets.length) * 100) : 0;
+export function ReportClient({
+  assets = [],
+  maintenance = [],
+  damages = [],
+  loans = [],
+  categories = [],
+}) {
+  const [tab, setTab] = useState('inventaris');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+
+  function matchesDateRange(dateInput) {
+    if (!startDate && !endDate) return true;
+    const ymd = toYmdInTz(dateInput);
+    if (!ymd) return false;
+    if (startDate && ymd < startDate) return false;
+    if (endDate && ymd > endDate) return false;
+    return true;
+  }
+
+  function handleTabChange(nextTab) {
+    setTab(nextTab);
+    setStatusFilter('');
+    if (nextTab === 'peminjaman') {
+      setCategoryFilter('');
+    }
+  }
+
+  function resetFilters() {
+    setStartDate('');
+    setEndDate('');
+    setCategoryFilter('');
+    setStatusFilter('');
+  }
+
+  const filteredAssets = assets.filter((a) => {
+    if (!matchesDateRange(a.acquisition_date || a.created_at)) return false;
+    if (categoryFilter && a.category_name !== categoryFilter) return false;
+    if (tab === 'inventaris' && statusFilter && a.status !== statusFilter) return false;
+    return true;
+  });
+
+  const filteredMaintenance = maintenance.filter((m) => {
+    if (!matchesDateRange(m.scheduled_at)) return false;
+    if (categoryFilter && m.category_name !== categoryFilter) return false;
+    if (tab === 'pemeliharaan' && statusFilter && m.status !== statusFilter) return false;
+    return true;
+  });
+
+  const filteredDamages = damages.filter((d) => {
+    if (!matchesDateRange(d.reported_at)) return false;
+    if (categoryFilter && d.category_name !== categoryFilter) return false;
+    if (tab === 'kerusakan' && statusFilter && d.status !== statusFilter) return false;
+    return true;
+  });
+
+  const filteredLoans = loans.filter((l) => {
+    if (!matchesDateRange(l.loan_date)) return false;
+    if (tab === 'peminjaman' && statusFilter && getLoanDisplayStatus(l) !== statusFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const goodCount = filteredAssets.filter((a) => a.condition === 'good').length;
+  const goodPct =
+    filteredAssets.length > 0 ? Math.round((goodCount / filteredAssets.length) * 100) : 0;
+
+  const hasFilters = Boolean(startDate || endDate || categoryFilter || statusFilter);
 
   function exportCsv() {
     let headers = [];
     let rows = [];
-    let filename = `laporan-${tab}.csv`;
+    const filename = `laporan-${tab}.csv`;
 
     if (tab === 'inventaris') {
       headers = ['Kode Aset', 'Nama Aset', 'Kategori', 'Lokasi', 'Kondisi', 'Status'];
-      rows = assets.map((a) => [
+      rows = filteredAssets.map((a) => [
         a.asset_code,
         a.name,
         a.category_name,
@@ -50,19 +146,21 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         getStatusMeta(ASSET_STATUSES, a.status).label,
       ]);
     } else if (tab === 'pemeliharaan') {
-      headers = ['Kode Aset', 'Nama Aset', 'Judul', 'Waktu Jadwal', 'Status'];
-      rows = maintenance.map((m) => [
+      headers = ['Kode Aset', 'Nama Aset', 'Kategori', 'Judul', 'Waktu Jadwal', 'Status'];
+      rows = filteredMaintenance.map((m) => [
         m.asset_code,
         m.asset_name,
+        m.category_name,
         m.title,
         formatDate(m.scheduled_at),
         getStatusMeta(MAINTENANCE_STATUSES, m.status).label,
       ]);
     } else if (tab === 'kerusakan') {
-      headers = ['Kode Aset', 'Nama Aset', 'Pelapor', 'Tanggal Lapor', 'Status', 'Deskripsi'];
-      rows = damages.map((d) => [
+      headers = ['Kode Aset', 'Nama Aset', 'Kategori', 'Pelapor', 'Tanggal Lapor', 'Status', 'Deskripsi'];
+      rows = filteredDamages.map((d) => [
         d.asset_code,
         d.asset_name,
+        d.category_name,
         d.reporter_name || '-',
         formatDate(d.reported_at),
         getStatusMeta(DAMAGE_STATUSES, d.status).label,
@@ -70,7 +168,7 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
       ]);
     } else {
       headers = ['Kode Pinjam', 'Peminjam', 'Tanggal Pinjam', 'Rencana Kembali', 'Status'];
-      rows = loans.map((l) => [
+      rows = filteredLoans.map((l) => [
         l.loan_code,
         l.borrower_name,
         formatDate(l.loan_date),
@@ -107,9 +205,10 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
             <button
               key={t.key}
               type="button"
-              onClick={() => setTab(t.key)}
-              className={`h-9 px-4 rounded-full text-sm font-semibold ${tab === t.key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:text-ink-900'
-                }`}
+              onClick={() => handleTabChange(t.key)}
+              className={`h-9 px-4 rounded-full text-sm font-semibold ${
+                tab === t.key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:text-ink-900'
+              }`}
             >
               {t.label}
             </button>
@@ -128,11 +227,92 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         </div>
       </div>
 
+      {/* Filter Periode, Kategori & Status */}
+      <div className="no-print rounded-[20px] bg-white border border-line-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-700">
+            Dari tanggal
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white font-normal text-ink-900"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-700">
+            Sampai tanggal
+            <input
+              type="date"
+              min={startDate || undefined}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white font-normal text-ink-900"
+            />
+          </label>
+          {tab !== 'peminjaman' && (
+            <label className="flex flex-col gap-1 text-xs font-semibold text-ink-700">
+              Kategori aset
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white font-normal text-ink-900"
+              >
+                <option value="">Semua kategori</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="flex flex-col gap-1 text-xs font-semibold text-ink-700">
+            Status
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white font-normal text-ink-900"
+            >
+              <option value="">Semua status</option>
+              {STATUS_OPTIONS_BY_TAB[tab].map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex justify-start lg:justify-end">
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                Reset filter
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {hasFilters && (
+        <div className="text-xs text-ink-600">
+          Menampilkan data terfilter
+          {startDate || endDate
+            ? ` · Periode ${startDate ? formatDate(startDate) : 'awal'} s.d. ${endDate ? formatDate(endDate) : 'sekarang'}`
+            : ''}
+          {categoryFilter ? ` · Kategori: ${categoryFilter}` : ''}
+          {statusFilter
+            ? ` · Status: ${STATUS_OPTIONS_BY_TAB[tab].find((s) => s.value === statusFilter)?.label || statusFilter}`
+            : ''}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total aset" value={assets.length} />
-        <StatCard label="Kondisi baik (%)" value={goodPct} subtext={`${goodCount} dari ${assets.length} aset`} />
-        <StatCard label="Jadwal pemeliharaan" value={maintenance.length} />
-        <StatCard label="Laporan kerusakan" value={damages.length} />
+        <StatCard label="Total aset" value={filteredAssets.length} />
+        <StatCard
+          label="Kondisi baik (%)"
+          value={goodPct}
+          subtext={`${goodCount} dari ${filteredAssets.length} aset`}
+        />
+        <StatCard label="Jadwal pemeliharaan" value={filteredMaintenance.length} />
+        <StatCard label="Laporan kerusakan" value={filteredDamages.length} />
       </div>
 
       <div className="rounded-[20px] bg-white border border-line-200 overflow-hidden">
@@ -150,14 +330,14 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                    {assets.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-5 py-8 text-center text-ink-600">
-                          Belum ada data inventaris aset.
-                        </td>
-                      </tr>
-                    ) : (
-                  assets.map((a) => (
+                {filteredAssets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-8 text-center text-ink-600">
+                      Tidak ada data inventaris aset yang cocok.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAssets.map((a) => (
                     <tr key={a.id} className="h-12">
                       <td className="px-5 font-semibold tabular-nums">{a.asset_code}</td>
                       <td className="px-4 font-medium">{a.name}</td>
@@ -166,9 +346,9 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                       <td className="px-4"><Badge map={ASSET_CONDITIONS} value={a.condition} /></td>
                       <td className="px-5"><Badge map={ASSET_STATUSES} value={a.status} /></td>
                     </tr>
-                    ))
+                  ))
                 )}
-                  </tbody>
+              </tbody>
             </table>
           )}
 
@@ -183,23 +363,23 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                    {maintenance.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-5 py-8 text-center text-ink-600">
-                          Belum ada data pemeliharaan.
-                        </td>
-                      </tr>
-                    ) : (
-                  maintenance.map((m) => (
+                {filteredMaintenance.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-8 text-center text-ink-600">
+                      Tidak ada data pemeliharaan yang cocok.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredMaintenance.map((m) => (
                     <tr key={m.id} className="h-12">
                       <td className="px-5 font-medium">{m.asset_code} · {m.asset_name}</td>
                       <td className="px-4">{m.title}</td>
                       <td className="px-4 tabular-nums text-ink-600">{formatDate(m.scheduled_at)}</td>
                       <td className="px-5"><Badge map={MAINTENANCE_STATUSES} value={m.status} /></td>
                     </tr>
-                    ))
+                  ))
                 )}
-                  </tbody>
+              </tbody>
             </table>
           )}
 
@@ -215,14 +395,14 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                    {damages.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
-                          Belum ada data laporan kerusakan.
-                        </td>
-                      </tr>
-                    ) : (
-                  damages.map((d) => (
+                {filteredDamages.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
+                      Tidak ada data laporan kerusakan yang cocok.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDamages.map((d) => (
                     <tr key={d.id} className="h-12">
                       <td className="px-5 font-medium">{d.asset_code} · {d.asset_name}</td>
                       <td className="px-4 text-ink-600">{d.reporter_name || '-'}</td>
@@ -230,9 +410,9 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                       <td className="px-4 max-w-sm truncate">{d.description}</td>
                       <td className="px-5"><Badge map={DAMAGE_STATUSES} value={d.status} /></td>
                     </tr>
-                    ))
+                  ))
                 )}
-                  </tbody>
+              </tbody>
             </table>
           )}
 
@@ -248,14 +428,14 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                    {loans.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
-                          Belum ada data peminjaman.
-                        </td>
-                      </tr>
-                    ) : (
-                  loans.map((l) => (
+                {filteredLoans.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
+                      Tidak ada data peminjaman yang cocok.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLoans.map((l) => (
                     <tr key={l.id} className="h-12">
                       <td className="px-5 font-semibold tabular-nums">{l.loan_code}</td>
                       <td className="px-4">{l.borrower_name}</td>
@@ -263,9 +443,9 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                       <td className="px-4 tabular-nums text-ink-600">{formatDate(l.expected_return_date)}</td>
                       <td className="px-5"><Badge map={LOAN_STATUSES} value={getLoanDisplayStatus(l)} /></td>
                     </tr>
-                    ))
+                  ))
                 )}
-                  </tbody>
+              </tbody>
             </table>
           )}
         </div>

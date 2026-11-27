@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, isValidUuid } from '@/lib/db';
-import { requireApiUser } from '@/lib/auth';
+import { requireApiUser, hashPassword } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
   const auth = await requireApiUser(['administrator']);
@@ -39,6 +39,19 @@ export async function PATCH(request, { params }) {
       }
       values.push(Boolean(body.is_active));
       updates.push(`is_active = $${values.length}`);
+    }
+
+    if (body.new_password !== undefined) {
+      const nextPassword = String(body.new_password || '');
+      if (nextPassword.length < 6) {
+        return NextResponse.json(
+          { error: 'Kata sandi baru minimal 6 karakter.' },
+          { status: 400 }
+        );
+      }
+      const passwordHash = await hashPassword(nextPassword);
+      values.push(passwordHash);
+      updates.push(`password_hash = $${values.length}`);
     }
 
     if (updates.length === 0) {

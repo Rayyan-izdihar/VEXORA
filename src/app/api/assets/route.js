@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, isValidUuid } from '@/lib/db';
+import { query, isValidUuid, isValidUploadUrl } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 const VALID_CONDITIONS = ['good', 'needs_attention', 'damaged'];
@@ -58,6 +58,7 @@ export async function POST(request) {
     const condition = body.condition || 'good';
     const status = body.status || 'available';
     const acquisitionDate = body.acquisition_date || null;
+    const imageUrl = body.image_url ? String(body.image_url).trim() : null;
     const description = body.description ? String(body.description).trim() : null;
     const notes = body.notes ? String(body.notes).trim() : null;
 
@@ -67,28 +68,31 @@ export async function POST(request) {
     if (!name) {
       return NextResponse.json({ error: 'Isi nama aset terlebih dahulu.' }, { status: 400 });
     }
-      if (!categoryId || !isValidUuid(categoryId)) {
-        return NextResponse.json({ error: 'Pilih kategori aset yang valid.' }, { status: 400 });
-      }
-      if (locationId !== null && !isValidUuid(locationId)) {
-        return NextResponse.json({ error: 'Lokasi tidak valid.' }, { status: 400 });
-      }
-      if (!VALID_CONDITIONS.includes(condition)) {
-        return NextResponse.json({ error: 'Kondisi aset tidak valid.' }, { status: 400 });
-      }
-      if (!VALID_CREATE_STATUSES.includes(status)) {
-        return NextResponse.json(
-          { error: 'Status awal aset harus Tersedia, Pemeliharaan, atau Nonaktif.' },
-          { status: 400 }
-        );
-      }
-
-      const { rows } = await query(
-        `INSERT INTO assets (asset_code, name, description, category_id, location_id, condition, status, acquisition_date, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`,
-        [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, notes]
+    if (!categoryId || !isValidUuid(categoryId)) {
+      return NextResponse.json({ error: 'Pilih kategori aset yang valid.' }, { status: 400 });
+    }
+    if (locationId !== null && !isValidUuid(locationId)) {
+      return NextResponse.json({ error: 'Lokasi tidak valid.' }, { status: 400 });
+    }
+    if (!VALID_CONDITIONS.includes(condition)) {
+      return NextResponse.json({ error: 'Kondisi aset tidak valid.' }, { status: 400 });
+    }
+    if (!VALID_CREATE_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: 'Status awal aset harus Tersedia, Pemeliharaan, atau Nonaktif.' },
+        { status: 400 }
       );
+    }
+    if (!isValidUploadUrl(imageUrl)) {
+      return NextResponse.json({ error: 'URL foto aset tidak valid.' }, { status: 400 });
+    }
+
+    const { rows } = await query(
+      `INSERT INTO assets (asset_code, name, description, category_id, location_id, condition, status, acquisition_date, image_url, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, imageUrl, notes]
+    );
 
       return NextResponse.json({ asset: rows[0] }, { status: 201 });
     } catch (err) {

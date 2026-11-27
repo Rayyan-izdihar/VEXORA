@@ -9,20 +9,24 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ASSET_STATUSES } from '@/lib/status';
-import { toLocalDateInputValue } from '@/lib/format';
+import { formatDate, toLocalDateInputValue } from '@/lib/format';
 import { useToast } from '@/components/ui/Toast';
 
-export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, preselectedAssetId = '' }) {
+export function LoanForm({
+  assets = [],
+  borrowers = [],
+  activeBookings = [],
+  isStaff,
+  currentUserId,
+  preselectedAssetId = '',
+}) {
   const router = useRouter();
   const { showToast } = useToast();
 
   const today = toLocalDateInputValue();
-  const [borrowerId, setBorrowerId] = useState(isStaff ? borrowers[0]?.id || currentUserId : currentUserId);
-  const [selectedIds, setSelectedIds] = useState(() => {
-    if (!preselectedAssetId) return [];
-    const found = assets.find((a) => a.id === preselectedAssetId && a.status === 'available');
-    return found ? [found.id] : [];
-  });
+  const [borrowerId, setBorrowerId] = useState(
+    isStaff ? borrowers[0]?.id || currentUserId : currentUserId
+  );
   const [searchAsset, setSearchAsset] = useState('');
   const [loanDate, setLoanDate] = useState(today);
   const [expectedReturnDate, setExpectedReturnDate] = useState(today);
@@ -30,6 +34,68 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
   const [directBorrow, setDirectBorrow] = useState(isStaff);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  function getAssetConflict(assetId, start, end) {
+    if (!start || !end) return null;
+    return (
+      activeBookings.find((b) => {
+        if (b.asset_id !== assetId) return false;
+        const bookingEnd =
+          b.status === 'borrowed' || b.status === 'overdue'
+            ? b.expected_return_date > today
+              ? b.expected_return_date
+              : today
+            : b.expected_return_date;
+        return b.loan_date <= end && bookingEnd >= start;
+      }) || null
+    );
+  }
+
+  function isAssetSelectable(asset, start, end, direct) {
+    if (!asset || asset.status === 'inactive') return false;
+    if (getAssetConflict(asset.id, start, end)) return false;
+    if (direct && isStaff) {
+      return asset.status === 'available';
+    }
+    if (asset.status === 'maintenance' && start <= today) {
+      return false;
+    }
+    return true;
+  }
+
+  const [selectedIds, setSelectedIds] = useState(() => {
+    if (!preselectedAssetId) return [];
+    const found = assets.find((a) => a.id === preselectedAssetId);
+    return found && isAssetSelectable(found, today, today, isStaff) ? [found.id] : [];
+  });
+
+  function pruneUnavailable(nextStart, nextEnd, nextDirect) {
+    setSelectedIds((prev) =>
+      prev.filter((id) => {
+        const asset = assets.find((a) => a.id === id);
+        return isAssetSelectable(asset, nextStart, nextEnd, nextDirect);
+      })
+    );
+  }
+
+  function handleLoanDateChange(val) {
+    const nextEnd = expectedReturnDate < val ? val : expectedReturnDate;
+    setLoanDate(val);
+    if (nextEnd !== expectedReturnDate) {
+      setExpectedReturnDate(nextEnd);
+    }
+    pruneUnavailable(val, nextEnd, directBorrow);
+  }
+
+  function handleExpectedReturnChange(val) {
+    setExpectedReturnDate(val);
+    pruneUnavailable(loanDate, val, directBorrow);
+  }
+
+  function handleDirectBorrowChange(checked) {
+    setDirectBorrow(checked);
+    pruneUnavailable(loanDate, expectedReturnDate, checked);
+  }
 
   const filteredAssets = assets.filter((a) => {
     const q = searchAsset.toLowerCase();
@@ -51,7 +117,7 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
     setError('');
 
     if (selectedIds.length === 0) {
-      setError('Pilih minimal satu aset yang tersedia.');
+      setError('Pilih minimal satu aset yang tersedia pada jadwal tersebut.');
       return;
     }
     if (expectedReturnDate < loanDate) {
@@ -121,9 +187,46 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
         )}
 
         <div className="space-y-3">
+          <span className="text-sm font-semibold text-ink-900">
+            {isStaff ? '2.' : '1.'} Tentukan jadwal peminjaman
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Tanggal pinjam"
+              name="loan_date"
+              type="date"
+              required
+              value={loanDate}
+              onChange={(e) => handleLoanDateChange(e.target.value)}
+            />
+            <Input
+              label="Rencana kembali"
+              name="expected_return_date"
+              type="date"
+              required
+              min={loanDate}
+              value={expectedReturnDate}
+              onChange={(e) => handleExpectedReturnChange(e.target.value)}
+            />
+          </div>
+
+          {isStaff && (
+            <label className="flex items-center gap-3 text-sm text-ink-900 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={directBorrow}
+                onChange={(e) => handleDirectBorrowChange(e.target.checked)}
+                className="w-4 h-4 accent-ink-900"
+              />
+              <span>Langsung serahkan aset sekarang (status langsung Dipinjam)</span>
+            </label>
+          )}
+        </div>
+
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-semibold text-ink-900">
-              {isStaff ? '2.' : '1.'} Pilih aset ({selectedIds.length} dipilih)
+              {isStaff ? '3.' : '2.'} Pilih aset ({selectedIds.length} dipilih)
             </span>
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-ink-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -137,22 +240,24 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
             </div>
           </div>
 
-          <div className="max-h-72 overflow-y-auto rounded-[16px] bg-white border border-line-200 divide-y divide-line-200">
+          <div className="max-h-80 overflow-y-auto rounded-[16px] bg-white border border-line-200 divide-y divide-line-200">
             {filteredAssets.length === 0 ? (
               <div className="px-4 py-6 text-center text-sm text-ink-600">
                 Tidak ada aset yang cocok.
               </div>
             ) : (
               filteredAssets.map((a) => {
-                const available = a.status === 'available';
+                const conflict = getAssetConflict(a.id, loanDate, expectedReturnDate);
+                const available = isAssetSelectable(a, loanDate, expectedReturnDate, directBorrow);
                 const checked = selectedIds.includes(a.id);
+
                 return (
                   <label
                     key={a.id}
                     className={`flex items-center justify-between gap-3 px-4 py-3 ${
                       available
                         ? 'cursor-pointer hover:bg-cream-50'
-                        : 'opacity-55 cursor-not-allowed bg-cream-50'
+                        : 'opacity-60 cursor-not-allowed bg-cream-50'
                     } ${checked ? 'bg-lime-100/70' : ''}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -177,7 +282,20 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
                           <span className="tabular-nums mr-2 text-ink-600">{a.asset_code}</span>
                           {a.name}
                         </div>
-                        <div className="text-xs text-ink-600">{a.category_name}</div>
+                        <div className="text-xs text-ink-600">
+                          {a.category_name}
+                          {conflict && (
+                            <span className="text-status-danger-fg font-medium ml-2">
+                              · Bentrok jadwal ({formatDate(conflict.loan_date)} –{' '}
+                              {formatDate(conflict.expected_return_date)})
+                            </span>
+                          )}
+                          {!conflict && available && a.status !== 'available' && (
+                            <span className="text-status-success-fg font-medium ml-2">
+                              · Tersedia untuk jadwal dipilih
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <Badge map={ASSET_STATUSES} value={a.status} />
@@ -188,26 +306,6 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Tanggal pinjam"
-            name="loan_date"
-            type="date"
-            required
-            value={loanDate}
-            onChange={(e) => setLoanDate(e.target.value)}
-          />
-          <Input
-            label="Rencana kembali"
-            name="expected_return_date"
-            type="date"
-            required
-            min={loanDate}
-            value={expectedReturnDate}
-            onChange={(e) => setExpectedReturnDate(e.target.value)}
-          />
-        </div>
-
         <Textarea
           label="Keperluan peminjaman"
           name="purpose"
@@ -215,51 +313,37 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
           value={purpose}
           onChange={(e) => setPurpose(e.target.value)}
         />
-
-        {
-                isStaff && (
-                  <label className="flex items-center gap-3 text-sm text-ink-900 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={directBorrow}
-                      onChange={(e) => setDirectBorrow(e.target.checked)}
-                      className="w-4 h-4 accent-ink-900"
-                    />
-                    <span>Langsung serahkan aset sekarang (status langsung Dipinjam)</span>
-                  </label>
-                )
-              }
       </div>
 
-          {/* Ringkasan Sticky */}
-          <div className="lg:col-span-4 rounded-[20px] bg-white border border-line-200 p-6 space-y-4 sticky top-20">
-            <h2 className="text-lg font-semibold text-ink-900">Ringkasan</h2>
-            <dl className="space-y-2.5 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-ink-600">Aset dipilih</dt>
-                <dd className="font-semibold tabular-nums">{selectedIds.length} unit</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-ink-600">Tanggal pinjam</dt>
-                <dd className="font-semibold tabular-nums">{loanDate}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-ink-600">Rencana kembali</dt>
-                <dd className="font-semibold tabular-nums">{expectedReturnDate}</dd>
-              </div>
-            </dl>
-
-            <div className="pt-3 border-t border-line-200 flex flex-col gap-2.5">
-              <Button type="submit" variant="primary" loading={loading} className="w-full">
-                {isStaff && directBorrow ? 'Catat peminjaman' : 'Ajukan peminjaman'}
-              </Button>
-              <Link href="/peminjaman" className="w-full">
-                <Button variant="secondary" className="w-full">
-                  Batal
-                </Button>
-              </Link>
-            </div>
+      {/* Ringkasan Sticky */}
+      <div className="lg:col-span-4 rounded-[20px] bg-white border border-line-200 p-6 space-y-4 sticky top-20">
+        <h2 className="text-lg font-semibold text-ink-900">Ringkasan</h2>
+        <dl className="space-y-2.5 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-ink-600">Aset dipilih</dt>
+            <dd className="font-semibold tabular-nums">{selectedIds.length} unit</dd>
           </div>
-        </form>
-        );
+          <div className="flex justify-between">
+            <dt className="text-ink-600">Tanggal pinjam</dt>
+            <dd className="font-semibold tabular-nums">{loanDate}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-ink-600">Rencana kembali</dt>
+            <dd className="font-semibold tabular-nums">{expectedReturnDate}</dd>
+          </div>
+        </dl>
+
+        <div className="pt-3 border-t border-line-200 flex flex-col gap-2.5">
+          <Button type="submit" variant="primary" loading={loading} className="w-full">
+            {isStaff && directBorrow ? 'Catat peminjaman' : 'Ajukan peminjaman'}
+          </Button>
+          <Link href="/peminjaman" className="w-full">
+            <Button variant="secondary" className="w-full">
+              Batal
+            </Button>
+          </Link>
+        </div>
+      </div>
+    </form>
+  );
 }

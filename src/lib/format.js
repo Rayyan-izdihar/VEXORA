@@ -44,7 +44,7 @@ export function formatRelativeTime(dateInput) {
   return rtf.format(diffDays, 'day');
 }
 
-function toYmdInTz(dateInput) {
+export function toYmdInTz(dateInput) {
   if (!dateInput) return null;
   if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
     return dateInput;

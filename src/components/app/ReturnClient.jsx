@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Textarea } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { ASSET_CONDITIONS } from '@/lib/status';
 import { formatDate, formatDateTime, daysOverdue } from '@/lib/format';
 import { useToast } from '@/components/ui/Toast';
@@ -20,6 +21,7 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [conditionAfter, setConditionAfter] = useState('good');
   const [notes, setNotes] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [problemAssetId, setProblemAssetId] = useState('');
 
@@ -27,6 +29,7 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
     setSelectedItem(item);
     setConditionAfter('good');
     setNotes('');
+    setImageUrl('');
   }
 
   async function handleSubmit(e) {
@@ -41,6 +44,7 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
           loan_item_id: selectedItem.id,
           condition_after: conditionAfter,
           notes,
+          image_url: imageUrl || null,
         }),
       });
       const data = await res.json();
@@ -176,6 +180,7 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
                   <th className="py-3.5 px-4">Aset</th>
                   <th className="py-3.5 px-4">Peminjam</th>
                   <th className="py-3.5 px-4">Kondisi kembali</th>
+                  <th className="py-3.5 px-4">Bukti foto</th>
                   <th className="py-3.5 px-5">Penerima</th>
                 </tr>
               </thead>
@@ -192,6 +197,21 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
                     <td className="px-4 text-ink-700">{r.borrower_name}</td>
                     <td className="px-4">
                       <Badge map={ASSET_CONDITIONS} value={r.condition_after} />
+                    </td>
+                    <td className="px-4">
+                      {r.image_url ? (
+                        <a
+                          href={r.image_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-ink-700 underline hover:text-ink-900"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          Lihat
+                        </a>
+                      ) : (
+                        <span className="text-ink-400">-</span>
+                      )}
                     </td>
                     <td className="px-5 text-ink-600">{r.receiver_name || '-'}</td>
                   </tr>
@@ -243,6 +263,16 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
             placeholder="Kelengkapan kabel, tas, atau catatan kondisi..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+          />
+
+          <ImageUpload
+            label={
+              conditionAfter === 'good'
+                ? 'Foto kondisi kembali (opsional)'
+                : 'Foto bukti kondisi bermasalah (disarankan)'
+            }
+            value={imageUrl}
+            onChange={setImageUrl}
           />
 
           <div className="flex justify-end gap-3 pt-2">

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Table';
+import { UploadedImage } from '@/components/ui/ImageUpload';
 import { AssetFilterBar } from '@/components/app/AssetFilterBar';
 
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export default async function AsetListPage({ searchParams }) {
       params
     ),
     query(
-      `SELECT a.id, a.asset_code, a.name, a.condition, a.status,
+      `SELECT a.id, a.asset_code, a.name, a.condition, a.status, a.image_url,
               c.name AS category_name, l.name AS location_name
        FROM assets a
        JOIN categories c ON c.id = a.category_id
@@ -160,9 +161,17 @@ export default async function AsetListPage({ searchParams }) {
                     </td>
                     <td className="px-4">
                       <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-full bg-cream-100 text-ink-700 inline-flex items-center justify-center shrink-0">
-                          <Package className="w-4 h-4" />
-                        </span>
+                        {a.image_url ? (
+                          <UploadedImage
+                            src={a.image_url}
+                            alt={a.name}
+                            className="w-9 h-9 rounded-full object-cover border border-line-200 shrink-0"
+                          />
+                        ) : (
+                          <span className="w-9 h-9 rounded-full bg-cream-100 text-ink-700 inline-flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4" />
+                          </span>
+                        )}
                         <Link href={`/aset/${a.id}`} className="font-medium text-ink-900 hover:underline">
                           {a.name}
                         </Link>

@@ -35,7 +35,7 @@ export default async function PeminjamanDetailPage({ params }) {
 
   const { rows: items } = await query(
     `SELECT li.*, a.asset_code, a.name AS asset_name,
-            rr.return_date, rr.condition_after
+            rr.return_date, rr.condition_after, rr.image_url AS return_image_url
      FROM loan_items li
      JOIN assets a ON a.id = li.asset_id
      LEFT JOIN return_records rr ON rr.loan_item_id = li.id
@@ -136,8 +136,18 @@ export default async function PeminjamanDetailPage({ params }) {
                       {item.asset_name}
                     </Link>
                     {item.return_date && (
-                      <div className="text-xs text-ink-600 mt-0.5">
-                        Dikembalikan pada {formatDate(item.return_date)}
+                      <div className="text-xs text-ink-600 mt-0.5 flex flex-wrap items-center gap-2">
+                        <span>Dikembalikan pada {formatDate(item.return_date)}</span>
+                        {item.return_image_url && (
+                          <a
+                            href={item.return_image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-ink-900 underline"
+                          >
+                            Lihat foto kembali
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>

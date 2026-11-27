@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS assets (
     condition VARCHAR(30) NOT NULL,
     status VARCHAR(30) NOT NULL,
     acquisition_date DATE,
+    image_url TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS return_records (
     received_by UUID REFERENCES users(id) ON DELETE SET NULL,
     return_date TIMESTAMPTZ NOT NULL,
     condition_after VARCHAR(30) NOT NULL,
+    image_url TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_return_condition_after CHECK (condition_after IN ('good', 'needs_attention', 'damaged'))
@@ -108,6 +110,7 @@ CREATE TABLE IF NOT EXISTS damage_reports (
     reported_by UUID REFERENCES users(id) ON DELETE SET NULL,
     reported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     description TEXT NOT NULL,
+    image_url TEXT,
     status VARCHAR(30) NOT NULL,
     resolution_notes TEXT,
     resolved_at TIMESTAMPTZ,
@@ -120,8 +123,11 @@ CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     maintenance_schedule_id UUID REFERENCES maintenance_schedules(id) ON DELETE SET NULL,
+    loan_id UUID REFERENCES loans(id) ON DELETE SET NULL,
+    damage_report_id UUID REFERENCES damage_reports(id) ON DELETE SET NULL,
     title VARCHAR(160) NOT NULL,
     message TEXT NOT NULL,
+    link_url VARCHAR(255),
     scheduled_for TIMESTAMPTZ,
     sent_at TIMESTAMPTZ,
     read_at TIMESTAMPTZ,
@@ -134,8 +140,18 @@ CREATE INDEX IF NOT EXISTS idx_assets_location ON assets (location_id);
 CREATE INDEX IF NOT EXISTS idx_assets_condition_status ON assets (condition, status);
 CREATE INDEX IF NOT EXISTS idx_loans_borrower ON loans (borrower_id);
 CREATE INDEX IF NOT EXISTS idx_loans_status ON loans (status);
+CREATE INDEX IF NOT EXISTS idx_loans_dates ON loans (status, loan_date, expected_return_date);
 CREATE INDEX IF NOT EXISTS idx_loan_items_asset ON loan_items (asset_id);
 CREATE INDEX IF NOT EXISTS idx_maintenance_asset_date ON maintenance_schedules (asset_id, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_maintenance_status_date ON maintenance_schedules (status, scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_damage_reports_asset_date ON damage_reports (asset_id, reported_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications (user_id, read_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_loan ON notifications (loan_id);
+
+-- Idempotent column upgrades for existing databases
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE damage_reports ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE return_records ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url VARCHAR(255);
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS loan_id UUID REFERENCES loans(id) ON DELETE SET NULL;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS damage_report_id UUID REFERENCES damage_reports(id) ON DELETE SET NULL;
