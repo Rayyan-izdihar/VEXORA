@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withTransaction } from '@/lib/db';
+import { withTransaction, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
@@ -7,15 +7,24 @@ export async function PATCH(request, { params }) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id } = await params;
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Laporan tidak ditemukan.' }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
     const status = body.status;
-    const resolutionNotes = body.resolution_notes ? String(body.resolution_notes).trim() : null;
+    const hasResolutionNotes = body.resolution_notes !== undefined;
+    const resolutionNotes = hasResolutionNotes
+      ? (String(body.resolution_notes || '').trim() || null)
+      : undefined;
     const assetCondition = body.asset_condition || null;
 
     if (!['reported', 'reviewed', 'in_progress', 'resolved'].includes(status)) {
       return NextResponse.json({ error: 'Status laporan tidak valid.' }, { status: 400 });
+    }
+    if (assetCondition && !['good', 'needs_attention', 'damaged'].includes(assetCondition)) {
+      return NextResponse.json({ error: 'Kondisi aset tidak valid.' }, { status: 400 });
     }
 
     const updated = await withTransaction(async (client) => {
@@ -26,27 +35,30 @@ export async function PATCH(request, { params }) {
       const current = rows[0];
       if (!current) return null;
 
-      const resolvedAt = status === 'resolved' ? new Date().toISOString() : current.resolved_at;
+      const resolvedAt =
+        status === 'resolved' ? (current.resolved_at || new Date().toISOString()) : null;
+      const nextNotes = hasResolutionNotes ? resolutionNotes : current.resolution_notes;
+
       const { rows: updatedRows } = await client.query(
         `UPDATE damage_reports
          SET status = $1,
-             resolution_notes = COALESCE($2, resolution_notes),
+             resolution_notes = $2,
              resolved_at = $3,
              updated_at = NOW()
          WHERE id = $4
          RETURNING *`,
-        [status, resolutionNotes, resolvedAt, id]
+        [status, nextNotes, resolvedAt, id]
       );
 
-      if (assetCondition && ['good', 'needs_attention', 'damaged'].includes(assetCondition)) {
-        await client.query(
-          `UPDATE assets SET condition = $1, updated_at = NOW() WHERE id = $2`,
-          [assetCondition, current.asset_id]
-        );
-      }
+        if (assetCondition) {
+          await client.query(
+            `UPDATE assets SET condition = $1, updated_at = NOW() WHERE id = $2`,
+            [assetCondition, current.asset_id]
+          );
+        }
 
-      return updatedRows[0];
-    });
+        return updatedRows[0];
+      });
 
     if (!updated) {
       return NextResponse.json({ error: 'Laporan tidak ditemukan.' }, { status: 404 });

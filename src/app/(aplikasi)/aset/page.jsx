@@ -23,7 +23,8 @@ export default async function AsetListPage({ searchParams }) {
   const lokasi = sp?.lokasi || '';
   const kondisi = sp?.kondisi || '';
   const status = sp?.status || '';
-  const page = Math.max(1, Number(sp?.page || 1));
+  const rawPage = Number.parseInt(sp?.page || '1', 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const where = [];
   const params = [];

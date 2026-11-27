@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withTransaction } from '@/lib/db';
+import { withTransaction, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 export async function POST(request, { params }) {
@@ -9,6 +9,9 @@ export async function POST(request, { params }) {
   const user = auth.user;
   const isStaff = user.role === 'administrator' || user.role === 'laboran';
   const { id } = await params;
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Transaksi peminjaman tidak ditemukan.' }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
@@ -86,31 +89,42 @@ export async function POST(request, { params }) {
           [id]
         );
         const assetIds = items.map((i) => i.asset_id);
+        if (assetIds.length === 0) {
+          return { error: 'Transaksi peminjaman tidak memiliki aset.', status: 400 };
+        }
 
         const { rows: lockedAssets } = await client.query(
-          `SELECT id, asset_code, name, status
+          `SELECT id, asset_code, name, condition, status
            FROM assets
-           WHERE id = ANY($1::uuid[])
+           WHERE id = ANY($1:: uuid[])
            ORDER BY id ASC
            FOR UPDATE`,
           [assetIds]
         );
 
+        if (lockedAssets.length !== assetIds.length) {
+          return { error: 'Sebagian aset pada transaksi ini tidak ditemukan.', status: 404 };
+        }
+
         const unavailable = lockedAssets.filter((a) => a.status !== 'available');
         if (unavailable.length > 0) {
-          const names = unavailable.map((a) => `${a.name} (${a.asset_code})`).join(', ');
+          const names = unavailable.map((a) => `${ a.name }(${ a.asset_code })`).join(', ');
           return {
-            error: `Tidak dapat menyerahkan: ${names} baru saja dipinjam orang lain atau tidak tersedia.`,
+            error: `Tidak dapat menyerahkan: ${ names } baru saja dipinjam orang lain atau tidak tersedia.`,
             status: 409,
           };
         }
 
         await client.query(
-          `UPDATE assets SET status = 'borrowed', updated_at = NOW() WHERE id = ANY($1::uuid[])`,
+          `UPDATE assets SET status = 'borrowed', updated_at = NOW() WHERE id = ANY($1:: uuid[])`,
           [assetIds]
         );
         await client.query(
-          `UPDATE loan_items SET item_status = 'borrowed' WHERE loan_id = $1`,
+          `UPDATE loan_items li
+           SET item_status = 'borrowed',
+          condition_before = a.condition
+           FROM assets a
+           WHERE li.asset_id = a.id AND li.loan_id = $1`,
           [id]
         );
         await client.query(

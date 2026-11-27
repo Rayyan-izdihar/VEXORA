@@ -11,8 +11,22 @@ import {
   MAINTENANCE_STATUSES,
   DAMAGE_STATUSES,
   LOAN_STATUSES,
+  getStatusMeta,
 } from '@/lib/status';
-import { formatDate } from '@/lib/format';
+import { formatDate, daysOverdue } from '@/lib/format';
+
+function getLoanDisplayStatus(loan) {
+  const late = ['borrowed', 'overdue'].includes(loan.status)
+    ? daysOverdue(loan.expected_return_date)
+    : 0;
+  return late > 0 ? 'overdue' : loan.status;
+}
+
+function escapeCsvCell(cell) {
+  const str = String(cell ?? '');
+  const safe = /^[=+@\t\r]|^-(?=\S)/.test(str) ? `'${str}` : str;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
 
 export function ReportClient({ assets = [], maintenance = [], damages = [], loans = [] }) {
   const [tab, setTab] = useState('inventaris');
@@ -32,8 +46,8 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         a.name,
         a.category_name,
         a.location_name || '-',
-        a.condition,
-        a.status,
+        getStatusMeta(ASSET_CONDITIONS, a.condition).label,
+        getStatusMeta(ASSET_STATUSES, a.status).label,
       ]);
     } else if (tab === 'pemeliharaan') {
       headers = ['Kode Aset', 'Nama Aset', 'Judul', 'Waktu Jadwal', 'Status'];
@@ -42,7 +56,7 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         m.asset_name,
         m.title,
         formatDate(m.scheduled_at),
-        m.status,
+        getStatusMeta(MAINTENANCE_STATUSES, m.status).label,
       ]);
     } else if (tab === 'kerusakan') {
       headers = ['Kode Aset', 'Nama Aset', 'Pelapor', 'Tanggal Lapor', 'Status', 'Deskripsi'];
@@ -51,7 +65,7 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         d.asset_name,
         d.reporter_name || '-',
         formatDate(d.reported_at),
-        d.status,
+        getStatusMeta(DAMAGE_STATUSES, d.status).label,
         d.description,
       ]);
     } else {
@@ -61,14 +75,14 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
         l.borrower_name,
         formatDate(l.loan_date),
         formatDate(l.expected_return_date),
-        l.status,
+        getStatusMeta(LOAN_STATUSES, getLoanDisplayStatus(l)).label,
       ]);
     }
 
     const csvContent =
       '\uFEFF' +
       [headers, ...rows]
-        .map((r) => r.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        .map((r) => r.map(escapeCsvCell).join(','))
         .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -77,7 +91,7 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
     link.href = url;
     link.download = filename;
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (
@@ -94,9 +108,8 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`h-9 px-4 rounded-full text-sm font-semibold ${
-                tab === t.key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:text-ink-900'
-              }`}
+              className={`h-9 px-4 rounded-full text-sm font-semibold ${tab === t.key ? 'bg-ink-900 text-white' : 'text-ink-700 hover:text-ink-900'
+                }`}
             >
               {t.label}
             </button>
@@ -137,17 +150,25 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                {assets.map((a) => (
-                  <tr key={a.id} className="h-12">
-                    <td className="px-5 font-semibold tabular-nums">{a.asset_code}</td>
-                    <td className="px-4 font-medium">{a.name}</td>
-                    <td className="px-4 text-ink-600">{a.category_name}</td>
-                    <td className="px-4 text-ink-600">{a.location_name || '-'}</td>
-                    <td className="px-4"><Badge map={ASSET_CONDITIONS} value={a.condition} /></td>
-                    <td className="px-5"><Badge map={ASSET_STATUSES} value={a.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
+                    {assets.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-8 text-center text-ink-600">
+                          Belum ada data inventaris aset.
+                        </td>
+                      </tr>
+                    ) : (
+                  assets.map((a) => (
+                    <tr key={a.id} className="h-12">
+                      <td className="px-5 font-semibold tabular-nums">{a.asset_code}</td>
+                      <td className="px-4 font-medium">{a.name}</td>
+                      <td className="px-4 text-ink-600">{a.category_name}</td>
+                      <td className="px-4 text-ink-600">{a.location_name || '-'}</td>
+                      <td className="px-4"><Badge map={ASSET_CONDITIONS} value={a.condition} /></td>
+                      <td className="px-5"><Badge map={ASSET_STATUSES} value={a.status} /></td>
+                    </tr>
+                    ))
+                )}
+                  </tbody>
             </table>
           )}
 
@@ -162,15 +183,23 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                {maintenance.map((m) => (
-                  <tr key={m.id} className="h-12">
-                    <td className="px-5 font-medium">{m.asset_code} · {m.asset_name}</td>
-                    <td className="px-4">{m.title}</td>
-                    <td className="px-4 tabular-nums text-ink-600">{formatDate(m.scheduled_at)}</td>
-                    <td className="px-5"><Badge map={MAINTENANCE_STATUSES} value={m.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
+                    {maintenance.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-ink-600">
+                          Belum ada data pemeliharaan.
+                        </td>
+                      </tr>
+                    ) : (
+                  maintenance.map((m) => (
+                    <tr key={m.id} className="h-12">
+                      <td className="px-5 font-medium">{m.asset_code} · {m.asset_name}</td>
+                      <td className="px-4">{m.title}</td>
+                      <td className="px-4 tabular-nums text-ink-600">{formatDate(m.scheduled_at)}</td>
+                      <td className="px-5"><Badge map={MAINTENANCE_STATUSES} value={m.status} /></td>
+                    </tr>
+                    ))
+                )}
+                  </tbody>
             </table>
           )}
 
@@ -186,16 +215,24 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                {damages.map((d) => (
-                  <tr key={d.id} className="h-12">
-                    <td className="px-5 font-medium">{d.asset_code} · {d.asset_name}</td>
-                    <td className="px-4 text-ink-600">{d.reporter_name || '-'}</td>
-                    <td className="px-4 tabular-nums text-ink-600">{formatDate(d.reported_at)}</td>
-                    <td className="px-4 max-w-sm truncate">{d.description}</td>
-                    <td className="px-5"><Badge map={DAMAGE_STATUSES} value={d.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
+                    {damages.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
+                          Belum ada data laporan kerusakan.
+                        </td>
+                      </tr>
+                    ) : (
+                  damages.map((d) => (
+                    <tr key={d.id} className="h-12">
+                      <td className="px-5 font-medium">{d.asset_code} · {d.asset_name}</td>
+                      <td className="px-4 text-ink-600">{d.reporter_name || '-'}</td>
+                      <td className="px-4 tabular-nums text-ink-600">{formatDate(d.reported_at)}</td>
+                      <td className="px-4 max-w-sm truncate">{d.description}</td>
+                      <td className="px-5"><Badge map={DAMAGE_STATUSES} value={d.status} /></td>
+                    </tr>
+                    ))
+                )}
+                  </tbody>
             </table>
           )}
 
@@ -211,16 +248,24 @@ export function ReportClient({ assets = [], maintenance = [], damages = [], loan
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-200">
-                {loans.map((l) => (
-                  <tr key={l.id} className="h-12">
-                    <td className="px-5 font-semibold tabular-nums">{l.loan_code}</td>
-                    <td className="px-4">{l.borrower_name}</td>
-                    <td className="px-4 tabular-nums text-ink-600">{formatDate(l.loan_date)}</td>
-                    <td className="px-4 tabular-nums text-ink-600">{formatDate(l.expected_return_date)}</td>
-                    <td className="px-5"><Badge map={LOAN_STATUSES} value={l.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
+                    {loans.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-8 text-center text-ink-600">
+                          Belum ada data peminjaman.
+                        </td>
+                      </tr>
+                    ) : (
+                  loans.map((l) => (
+                    <tr key={l.id} className="h-12">
+                      <td className="px-5 font-semibold tabular-nums">{l.loan_code}</td>
+                      <td className="px-4">{l.borrower_name}</td>
+                      <td className="px-4 tabular-nums text-ink-600">{formatDate(l.loan_date)}</td>
+                      <td className="px-4 tabular-nums text-ink-600">{formatDate(l.expected_return_date)}</td>
+                      <td className="px-5"><Badge map={LOAN_STATUSES} value={getLoanDisplayStatus(l)} /></td>
+                    </tr>
+                    ))
+                )}
+                  </tbody>
             </table>
           )}
         </div>

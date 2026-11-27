@@ -52,15 +52,15 @@ export async function PATCH(request) {
 
     const { rows } = passwordHash
       ? await query(
-          `UPDATE users SET name = $1, password_hash = $2 WHERE id = $3
+          `UPDATE users SET name = $1, password_hash = $2, updated_at = NOW() WHERE id = $3
            RETURNING id, name, email, role`,
           [name, passwordHash, auth.user.id]
         )
       : await query(
-          `UPDATE users SET name = $1 WHERE id = $2
+        `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2
            RETURNING id, name, email, role`,
-          [name, auth.user.id]
-        );
+        [name, auth.user.id]
+      );
 
     const updatedUser = rows[0];
     await setSessionCookie(updatedUser);

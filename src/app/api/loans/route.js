@@ -1,6 +1,13 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { withTransaction } from '@/lib/db';
+import { withTransaction, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
+
+function isValidIsoDate(str) {
+  if (typeof str !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const parsed = new Date(`${str}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === str;
+}
 
 export async function POST(request) {
   const auth = await requireApiUser();
@@ -22,9 +29,21 @@ export async function POST(request) {
     if (assetIds.length === 0) {
       return NextResponse.json({ error: 'Pilih minimal satu aset.' }, { status: 400 });
     }
+    if (!assetIds.every(isValidUuid)) {
+      return NextResponse.json({ error: 'Format ID aset tidak valid.' }, { status: 400 });
+    }
+    if (!isValidUuid(borrowerId)) {
+      return NextResponse.json({ error: 'Format ID peminjam tidak valid.' }, { status: 400 });
+    }
     if (!loanDate || !expectedReturnDate) {
       return NextResponse.json(
         { error: 'Tanggal pinjam dan rencana kembali wajib diisi.' },
+        { status: 400 }
+      );
+    }
+    if (!isValidIsoDate(loanDate) || !isValidIsoDate(expectedReturnDate)) {
+      return NextResponse.json(
+        { error: 'Format tanggal tidak valid.' },
         { status: 400 }
       );
     }
@@ -36,6 +55,17 @@ export async function POST(request) {
     }
 
     const result = await withTransaction(async (client) => {
+      const { rows: borrowerRows } = await client.query(
+        `SELECT id, is_active FROM users WHERE id = $1 LIMIT 1`,
+        [borrowerId]
+      );
+      if (!borrowerRows[0] || !borrowerRows[0].is_active) {
+        return {
+          error: 'Peminjam tidak ditemukan atau akun sedang nonaktif.',
+          status: 400,
+        };
+      }
+
       // Lock selected assets in deterministic order to prevent deadlocks
       const { rows: lockedAssets } = await client.query(
         `SELECT id, asset_code, name, condition, status
@@ -60,7 +90,7 @@ export async function POST(request) {
         };
       }
 
-      const loanCode = `LN-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+      const loanCode = `LN-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
       const loanStatus = directBorrow ? 'borrowed' : 'pending';
       const itemStatus = directBorrow ? 'borrowed' : 'requested';
 

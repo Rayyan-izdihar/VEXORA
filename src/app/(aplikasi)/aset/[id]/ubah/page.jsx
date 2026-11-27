@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { AssetForm } from '@/components/app/AssetForm';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function UbahAsetPage({ params }) {
   await requireUser(['administrator', 'laboran']);
   const { id } = await params;
+  if (!isValidUuid(id)) notFound();
 
   const [assetRes, catRes, locRes] = await Promise.all([
     query(`SELECT * FROM assets WHERE id = $1 LIMIT 1`, [id]),

@@ -9,13 +9,14 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ASSET_STATUSES } from '@/lib/status';
+import { toLocalDateInputValue } from '@/lib/format';
 import { useToast } from '@/components/ui/Toast';
 
 export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, preselectedAssetId = '' }) {
   const router = useRouter();
   const { showToast } = useToast();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateInputValue();
   const [borrowerId, setBorrowerId] = useState(isStaff ? borrowers[0]?.id || currentUserId : currentUserId);
   const [selectedIds, setSelectedIds] = useState(() => {
     if (!preselectedAssetId) return [];
@@ -137,47 +138,53 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
           </div>
 
           <div className="max-h-72 overflow-y-auto rounded-[16px] bg-white border border-line-200 divide-y divide-line-200">
-            {filteredAssets.map((a) => {
-              const available = a.status === 'available';
-              const checked = selectedIds.includes(a.id);
-              return (
-                <label
-                  key={a.id}
-                  className={`flex items-center justify-between gap-3 px-4 py-3 ${
-                    available
-                      ? 'cursor-pointer hover:bg-cream-50'
-                      : 'opacity-55 cursor-not-allowed bg-cream-50'
-                  } ${checked ? 'bg-lime-100/70' : ''}`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <input
-                      type="checkbox"
-                      disabled={!available}
-                      checked={checked}
-                      onChange={() => toggleAsset(a.id)}
-                      className="sr-only"
-                    />
-                    <span
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                        checked
-                          ? 'bg-ink-900 border-ink-900 text-lime-400'
-                          : 'border-line-200 bg-white'
-                      }`}
-                    >
-                      {checked && <Check className="w-3.5 h-3.5" />}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-ink-900 truncate">
-                        <span className="tabular-nums mr-2 text-ink-600">{a.asset_code}</span>
-                        {a.name}
+            {filteredAssets.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm text-ink-600">
+                Tidak ada aset yang cocok.
+              </div>
+            ) : (
+              filteredAssets.map((a) => {
+                const available = a.status === 'available';
+                const checked = selectedIds.includes(a.id);
+                return (
+                  <label
+                    key={a.id}
+                    className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                      available
+                        ? 'cursor-pointer hover:bg-cream-50'
+                        : 'opacity-55 cursor-not-allowed bg-cream-50'
+                    } ${checked ? 'bg-lime-100/70' : ''}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        disabled={!available}
+                        checked={checked}
+                        onChange={() => toggleAsset(a.id)}
+                        className="sr-only"
+                      />
+                      <span
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                          checked
+                            ? 'bg-ink-900 border-ink-900 text-lime-400'
+                            : 'border-line-200 bg-white'
+                        }`}
+                      >
+                        {checked && <Check className="w-3.5 h-3.5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-ink-900 truncate">
+                          <span className="tabular-nums mr-2 text-ink-600">{a.asset_code}</span>
+                          {a.name}
+                        </div>
+                        <div className="text-xs text-ink-600">{a.category_name}</div>
                       </div>
-                      <div className="text-xs text-ink-600">{a.category_name}</div>
                     </div>
-                  </div>
-                  <Badge map={ASSET_STATUSES} value={a.status} />
-                </label>
-              );
-            })}
+                    <Badge map={ASSET_STATUSES} value={a.status} />
+                  </label>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -195,6 +202,7 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
             name="expected_return_date"
             type="date"
             required
+            min={loanDate}
             value={expectedReturnDate}
             onChange={(e) => setExpectedReturnDate(e.target.value)}
           />
@@ -208,48 +216,50 @@ export function LoanForm({ assets = [], borrowers = [], isStaff, currentUserId, 
           onChange={(e) => setPurpose(e.target.value)}
         />
 
-        {isStaff && (
-          <label className="flex items-center gap-3 text-sm text-ink-900 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={directBorrow}
-              onChange={(e) => setDirectBorrow(e.target.checked)}
-              className="w-4 h-4 accent-ink-900"
-            />
-            <span>Langsung serahkan aset sekarang (status langsung Dipinjam)</span>
-          </label>
-        )}
+        {
+                isStaff && (
+                  <label className="flex items-center gap-3 text-sm text-ink-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={directBorrow}
+                      onChange={(e) => setDirectBorrow(e.target.checked)}
+                      className="w-4 h-4 accent-ink-900"
+                    />
+                    <span>Langsung serahkan aset sekarang (status langsung Dipinjam)</span>
+                  </label>
+                )
+              }
       </div>
 
-      {/* Ringkasan Sticky */}
-      <div className="lg:col-span-4 rounded-[20px] bg-white border border-line-200 p-6 space-y-4 sticky top-20">
-        <h2 className="text-lg font-semibold text-ink-900">Ringkasan</h2>
-        <dl className="space-y-2.5 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-ink-600">Aset dipilih</dt>
-            <dd className="font-semibold tabular-nums">{selectedIds.length} unit</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-ink-600">Tanggal pinjam</dt>
-            <dd className="font-semibold tabular-nums">{loanDate}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-ink-600">Rencana kembali</dt>
-            <dd className="font-semibold tabular-nums">{expectedReturnDate}</dd>
-          </div>
-        </dl>
+          {/* Ringkasan Sticky */}
+          <div className="lg:col-span-4 rounded-[20px] bg-white border border-line-200 p-6 space-y-4 sticky top-20">
+            <h2 className="text-lg font-semibold text-ink-900">Ringkasan</h2>
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-ink-600">Aset dipilih</dt>
+                <dd className="font-semibold tabular-nums">{selectedIds.length} unit</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-ink-600">Tanggal pinjam</dt>
+                <dd className="font-semibold tabular-nums">{loanDate}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-ink-600">Rencana kembali</dt>
+                <dd className="font-semibold tabular-nums">{expectedReturnDate}</dd>
+              </div>
+            </dl>
 
-        <div className="pt-3 border-t border-line-200 flex flex-col gap-2.5">
-          <Button type="submit" variant="primary" loading={loading} className="w-full">
-            {isStaff && directBorrow ? 'Catat peminjaman' : 'Ajukan peminjaman'}
-          </Button>
-          <Link href="/peminjaman" className="w-full">
-            <Button variant="secondary" className="w-full">
-              Batal
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </form>
-  );
+            <div className="pt-3 border-t border-line-200 flex flex-col gap-2.5">
+              <Button type="submit" variant="primary" loading={loading} className="w-full">
+                {isStaff && directBorrow ? 'Catat peminjaman' : 'Ajukan peminjaman'}
+              </Button>
+              <Link href="/peminjaman" className="w-full">
+                <Button variant="secondary" className="w-full">
+                  Batal
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </form>
+        );
 }

@@ -6,14 +6,19 @@ export async function GET() {
   const auth = await requireApiUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { rows } = await query(`
-    SELECT c.*, COUNT(a.id)::int AS asset_count
-    FROM categories c
-    LEFT JOIN assets a ON a.category_id = c.id
-    GROUP BY c.id
-    ORDER BY c.name ASC
-  `);
-  return NextResponse.json({ categories: rows });
+  try {
+    const { rows } = await query(`
+      SELECT c.*, COUNT(a.id)::int AS asset_count
+      FROM categories c
+      LEFT JOIN assets a ON a.category_id = c.id
+      GROUP BY c.id
+      ORDER BY c.name ASC
+    `);
+    return NextResponse.json({ categories: rows });
+  } catch (err) {
+    console.error('List categories error:', err);
+    return NextResponse.json({ error: 'Gagal memuat kategori.' }, { status: 500 });
+  }
 }
 
 export async function POST(request) {

@@ -13,27 +13,51 @@ export function NotificationsClient({ notifications = [] }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(false);
 
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
   const items =
     filter === 'unread' ? notifications.filter((n) => !n.read_at) : notifications;
 
   async function markAllRead() {
-    await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mark_all: true }),
-    });
-    showToast('Semua notifikasi ditandai dibaca');
-    router.refresh();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark_all: true }),
+      });
+      if (!res.ok) {
+        showToast('Gagal menandai semua notifikasi.', 'error');
+        return;
+      }
+      showToast('Semua notifikasi ditandai dibaca');
+      router.refresh();
+    } catch {
+      showToast('Terjadi kesalahan jaringan.', 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function markOneRead(id) {
-    await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    router.refresh();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        showToast('Gagal menandai notifikasi.', 'error');
+        return;
+      }
+      router.refresh();
+    } catch {
+      showToast('Terjadi kesalahan jaringan.', 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -43,27 +67,30 @@ export function NotificationsClient({ notifications = [] }) {
           <button
             type="button"
             onClick={() => setFilter('all')}
-            className={`h-9 px-5 rounded-full text-sm font-semibold ${
-              filter === 'all' ? 'bg-ink-900 text-white' : 'text-ink-700'
-            }`}
+            className={`h-9 px-5 rounded-full text-sm font-semibold ${filter === 'all' ? 'bg-ink-900 text-white' : 'text-ink-700'
+              }`}
           >
             Semua ({notifications.length})
           </button>
           <button
             type="button"
             onClick={() => setFilter('unread')}
-            className={`h-9 px-5 rounded-full text-sm font-semibold ${
-              filter === 'unread' ? 'bg-ink-900 text-white' : 'text-ink-700'
-            }`}
+            className={`h-9 px-5 rounded-full text-sm font-semibold ${filter === 'unread' ? 'bg-ink-900 text-white' : 'text-ink-700'
+              }`}
           >
-            Belum dibaca ({notifications.filter((n) => !n.read_at).length})
+            Belum dibaca ({unreadCount})
           </button>
         </div>
 
-        <Button variant="secondary" size="sm" onClick={markAllRead}>
-          <CheckCheck className="w-4 h-4" />
-          Tandai semua dibaca
-        </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={markAllRead}
+            disabled={unreadCount === 0 || loading}
+          >
+            <CheckCheck className="w-4 h-4" />
+            Tandai semua dibaca
+          </Button>
       </div>
 
       {items.length === 0 ? (
@@ -79,9 +106,8 @@ export function NotificationsClient({ notifications = [] }) {
             return (
               <div
                 key={n.id}
-                className={`p-5 flex flex-wrap items-start justify-between gap-4 ${
-                  unread ? 'bg-lime-100/70' : ''
-                }`}
+                className={`p-5 flex flex-wrap items-start justify-between gap-4 ${unread ? 'bg-lime-100/70' : ''
+                  }`}
               >
                 <div className="flex items-start gap-3">
                   {unread && (

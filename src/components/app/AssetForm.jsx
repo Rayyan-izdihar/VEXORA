@@ -12,6 +12,7 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
   const router = useRouter();
   const { showToast } = useToast();
   const isEdit = Boolean(initialData?.id);
+  const isBorrowed = isEdit && initialData?.status === 'borrowed';
 
   const [assetCode, setAssetCode] = useState(initialData?.asset_code || '');
   const [name, setName] = useState(initialData?.name || '');
@@ -139,11 +140,10 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
                 key={opt.value}
                 type="button"
                 onClick={() => setCondition(opt.value)}
-                className={`h-11 rounded-[12px] text-xs sm:text-sm font-semibold border transition-colors ${
-                  condition === opt.value
+                className={`h-11 rounded-[12px] text-xs sm:text-sm font-semibold border transition-colors ${condition === opt.value
                     ? 'bg-ink-900 text-white border-ink-900'
                     : 'bg-white text-ink-700 border-line-200 hover:bg-cream-50'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -155,16 +155,19 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
           label="Status operasional"
           name="status"
           required
+          disabled={isBorrowed}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           helper={
-            isEdit
-              ? 'Status Dipinjam dikelola otomatis oleh transaksi peminjaman.'
-              : 'Bawaan aset baru adalah Tersedia.'
+            isBorrowed
+              ? 'Status Dipinjam dikelola otomatis oleh transaksi peminjaman. Catat pengembalian untuk mengubah status.'
+        : isEdit
+        ? 'Status Dipinjam dikelola otomatis oleh transaksi peminjaman.'
+        : 'Bawaan aset baru adalah Tersedia.'
           }
         >
-          <option value="available">Tersedia</option>
-          <option value="borrowed" disabled={!isEdit}>
+        <option value="available">Tersedia</option>
+          <option value="borrowed" disabled>
             Dipinjam
           </option>
           <option value="maintenance">Pemeliharaan</option>

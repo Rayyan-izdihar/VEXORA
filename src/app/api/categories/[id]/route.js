@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
@@ -7,6 +7,9 @@ export async function PATCH(request, { params }) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id } = await params;
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Kategori tidak ditemukan.' }, { status: 404 });
+  }
   try {
     const body = await request.json();
     const name = String(body.name || '').trim();
@@ -33,6 +36,9 @@ export async function DELETE(_request, { params }) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id } = await params;
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Kategori tidak ditemukan.' }, { status: 404 });
+  }
   try {
     const { rows: used } = await query(
       `SELECT COUNT(*)::int AS cnt FROM assets WHERE category_id = $1`,
@@ -46,7 +52,10 @@ export async function DELETE(_request, { params }) {
         { status: 409 }
       );
     }
-    await query(`DELETE FROM categories WHERE id = $1`, [id]);
+    const { rowCount } = await query(`DELETE FROM categories WHERE id = $1`, [id]);
+    if (rowCount === 0) {
+      return NextResponse.json({ error: 'Kategori tidak ditemukan.' }, { status: 404 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err.code === '23503') {

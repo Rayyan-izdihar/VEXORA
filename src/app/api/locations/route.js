@@ -6,14 +6,19 @@ export async function GET() {
   const auth = await requireApiUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { rows } = await query(`
-    SELECT l.*, COUNT(a.id)::int AS asset_count
-    FROM locations l
-    LEFT JOIN assets a ON a.location_id = l.id
-    GROUP BY l.id
-    ORDER BY l.name ASC
-  `);
-  return NextResponse.json({ locations: rows });
+  try {
+    const { rows } = await query(`
+      SELECT l.*, COUNT(a.id)::int AS asset_count
+      FROM locations l
+      LEFT JOIN assets a ON a.location_id = l.id
+      GROUP BY l.id
+      ORDER BY l.name ASC
+    `);
+    return NextResponse.json({ locations: rows });
+  } catch (err) {
+    console.error('List locations error:', err);
+    return NextResponse.json({ error: 'Gagal memuat lokasi.' }, { status: 500 });
+  }
 }
 
 export async function POST(request) {

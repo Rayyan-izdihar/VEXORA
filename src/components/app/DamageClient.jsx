@@ -48,6 +48,7 @@ export function DamageClient({ reports = [], assets = [], isStaff, preselectedAs
       }
       showToast('Laporan terkirim');
       setCreateOpen(false);
+      setAssetId('');
       setDescription('');
       setSaving(false);
       router.refresh();

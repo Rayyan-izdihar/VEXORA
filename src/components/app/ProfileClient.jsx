@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { USER_ROLES, getStatusMeta } from '@/lib/status';
+import { USER_ROLES } from '@/lib/status';
 import { useToast } from '@/components/ui/Toast';
 
 export function ProfileClient({ user }) {
@@ -16,8 +16,6 @@ export function ProfileClient({ user }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const roleMeta = getStatusMeta(USER_ROLES, user.role);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -59,7 +57,7 @@ export function ProfileClient({ user }) {
           <h2 className="text-lg font-semibold text-ink-900">{user.name}</h2>
           <p className="text-sm text-ink-600">{user.email}</p>
         </div>
-        <Badge tone={roleMeta.tone}>{roleMeta.label}</Badge>
+        <Badge map={USER_ROLES} value={user.role} />
       </Card>
 
       <Card className="lg:col-span-2 p-6">

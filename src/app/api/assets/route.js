@@ -1,40 +1,48 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
+
+const VALID_CONDITIONS = ['good', 'needs_attention', 'damaged'];
+const VALID_CREATE_STATUSES = ['available', 'maintenance', 'inactive'];
 
 export async function GET(request) {
   const auth = await requireApiUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const { searchParams } = new URL(request.url);
-  const q = (searchParams.get('q') || '').trim();
-  const status = searchParams.get('status') || '';
+  try {
+    const { searchParams } = new URL(request.url);
+    const q = (searchParams.get('q') || '').trim();
+    const status = searchParams.get('status') || '';
 
-  const where = [];
-  const params = [];
+    const where = [];
+    const params = [];
 
-  if (q) {
-    params.push(`%${q}%`);
-    where.push(`(a.asset_code ILIKE $${params.length} OR a.name ILIKE $${params.length})`);
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(a.asset_code ILIKE $${params.length} OR a.name ILIKE $${params.length})`);
+    }
+    if (status) {
+      params.push(status);
+      where.push(`a.status = $${params.length}`);
+    }
+
+    const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+    const { rows } = await query(
+      `SELECT a.*, c.name AS category_name, l.name AS location_name
+       FROM assets a
+       JOIN categories c ON c.id = a.category_id
+       LEFT JOIN locations l ON l.id = a.location_id
+       ${whereSql}
+       ORDER BY a.created_at DESC
+       LIMIT 100`,
+      params
+    );
+
+    return NextResponse.json({ assets: rows });
+  } catch (err) {
+    console.error('List assets error:', err);
+    return NextResponse.json({ error: 'Gagal memuat daftar aset.' }, { status: 500 });
   }
-  if (status) {
-    params.push(status);
-    where.push(`a.status = $${params.length}`);
-  }
-
-  const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
-  const { rows } = await query(
-    `SELECT a.*, c.name AS category_name, l.name AS location_name
-     FROM assets a
-     JOIN categories c ON c.id = a.category_id
-     LEFT JOIN locations l ON l.id = a.location_id
-     ${whereSql}
-     ORDER BY a.created_at DESC
-     LIMIT 100`,
-    params
-  );
-
-  return NextResponse.json({ assets: rows });
 }
 
 export async function POST(request) {
@@ -59,29 +67,50 @@ export async function POST(request) {
     if (!name) {
       return NextResponse.json({ error: 'Isi nama aset terlebih dahulu.' }, { status: 400 });
     }
-    if (!categoryId) {
-      return NextResponse.json({ error: 'Pilih kategori aset.' }, { status: 400 });
-    }
+      if (!categoryId || !isValidUuid(categoryId)) {
+        return NextResponse.json({ error: 'Pilih kategori aset yang valid.' }, { status: 400 });
+      }
+      if (locationId !== null && !isValidUuid(locationId)) {
+        return NextResponse.json({ error: 'Lokasi tidak valid.' }, { status: 400 });
+      }
+      if (!VALID_CONDITIONS.includes(condition)) {
+        return NextResponse.json({ error: 'Kondisi aset tidak valid.' }, { status: 400 });
+      }
+      if (!VALID_CREATE_STATUSES.includes(status)) {
+        return NextResponse.json(
+          { error: 'Status awal aset harus Tersedia, Pemeliharaan, atau Nonaktif.' },
+          { status: 400 }
+        );
+      }
 
-    const { rows } = await query(
-      `INSERT INTO assets (asset_code, name, description, category_id, location_id, condition, status, acquisition_date, notes)
+      const { rows } = await query(
+        `INSERT INTO assets (asset_code, name, description, category_id, location_id, condition, status, acquisition_date, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, notes]
-    );
+        [assetCode, name, description, categoryId, locationId, condition, status, acquisitionDate, notes]
+      );
 
-    return NextResponse.json({ asset: rows[0] }, { status: 201 });
-  } catch (err) {
-    if (err.code === '23505') {
+      return NextResponse.json({ asset: rows[0] }, { status: 201 });
+    } catch (err) {
+      if (err.code === '23505') {
+        return NextResponse.json(
+          { error: 'Kode aset tersebut sudah dipakai aset lain.' },
+          { status: 409 }
+        );
+      }
+      if (err.code === '23503') {
+        return NextResponse.json(
+          { error: 'Kategori atau lokasi tidak ditemukan.' },
+          { status: 400 }
+        );
+      }
+      if (err.code === '22P02') {
+        return NextResponse.json({ error: 'Format data tidak valid.' }, { status: 400 });
+      }
+      console.error('Create asset error:', err);
       return NextResponse.json(
-        { error: 'Kode aset tersebut sudah dipakai aset lain.' },
-        { status: 409 }
+        { error: 'Perubahan belum tersimpan. Periksa input lalu coba lagi.' },
+        { status: 500 }
       );
     }
-    console.error('Create asset error:', err);
-    return NextResponse.json(
-      { error: 'Perubahan belum tersimpan. Periksa input lalu coba lagi.' },
-      { status: 500 }
-    );
   }
-}

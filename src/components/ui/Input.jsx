@@ -33,6 +33,7 @@ export function Input({ label, id, helper, error, required, className = '', ...p
     <FieldWrapper label={label} htmlFor={inputId} helper={helper} error={error} required={required}>
       <input
         id={inputId}
+        required={required}
         className={`${baseInputClass} ${error ? 'border-status-danger-fg' : 'border-line-200'} ${className}`}
         aria-invalid={Boolean(error)}
         {...props}
@@ -48,6 +49,7 @@ export function Textarea({ label, id, helper, error, required, rows = 3, classNa
       <textarea
         id={inputId}
         rows={rows}
+        required={required}
         className={`w-full p-3.5 rounded-[12px] bg-white border text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:outline-none focus:border-ink-900 focus:ring-2 focus:ring-lime-400 ${error ? 'border-status-danger-fg' : 'border-line-200'} ${className}`}
         aria-invalid={Boolean(error)}
         {...props}
@@ -62,6 +64,7 @@ export function Select({ label, id, helper, error, required, children, className
     <FieldWrapper label={label} htmlFor={inputId} helper={helper} error={error} required={required}>
       <select
         id={inputId}
+        required={required}
         className={`${baseInputClass} ${error ? 'border-status-danger-fg' : 'border-line-200'} ${className}`}
         aria-invalid={Boolean(error)}
         {...props}

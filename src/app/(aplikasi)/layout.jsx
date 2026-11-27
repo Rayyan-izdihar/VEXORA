@@ -6,31 +6,24 @@ export const dynamic = 'force-dynamic';
 
 export default async function AplikasiLayout({ children }) {
   const user = await requireUser();
+  const isStaff = user.role === 'administrator' || user.role === 'laboran';
 
   let unreadNotifications = 0;
   let openDamage = 0;
-  let recentNotifications = [];
 
   try {
-    const [notifCountRes, damageCountRes, recentNotifRes] = await Promise.all([
+    const [notifCountRes, damageCountRes] = await Promise.all([
       query(
         `SELECT COUNT(*)::int AS cnt FROM notifications WHERE user_id = $1 AND read_at IS NULL`,
         [user.id]
       ),
-      query(`SELECT COUNT(*)::int AS cnt FROM damage_reports WHERE status != 'resolved'`),
-      query(
-        `SELECT id, title, message, read_at, created_at
-         FROM notifications
-         WHERE user_id = $1
-         ORDER BY created_at DESC
-         LIMIT 5`,
-        [user.id]
-      ),
+      isStaff
+        ? query(`SELECT COUNT(*)::int AS cnt FROM damage_reports WHERE status != 'resolved'`)
+        : Promise.resolve({ rows: [{ cnt: 0 }] }),
     ]);
 
     unreadNotifications = notifCountRes.rows[0]?.cnt ?? 0;
     openDamage = damageCountRes.rows[0]?.cnt ?? 0;
-    recentNotifications = recentNotifRes.rows;
   } catch {
     // ignore if DB not yet migrated
   }
@@ -39,7 +32,6 @@ export default async function AplikasiLayout({ children }) {
     <AppShell
       user={user}
       badges={{ unreadNotifications, openDamage }}
-      recentNotifications={recentNotifications}
     >
       {children}
     </AppShell>

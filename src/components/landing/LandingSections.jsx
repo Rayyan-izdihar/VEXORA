@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Hexagon,
   Menu,
@@ -108,13 +107,34 @@ export function LandingNavbar({ isLoggedIn }) {
               </li>
             ))}
           </ul>
-          <Link
-            href={isLoggedIn ? '/dashboard' : '/masuk'}
-            onClick={() => setMobileOpen(false)}
-            className="h-12 rounded-full bg-lime-400 text-ink-900 font-semibold flex items-center justify-center"
-          >
-            {isLoggedIn ? 'Buka Dashboard' : 'Masuk ke LIMMS'}
-          </Link>
+          <div className="space-y-3">
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="h-12 rounded-full bg-lime-400 text-ink-900 font-semibold flex items-center justify-center"
+              >
+                Buka Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/masuk"
+                  onClick={() => setMobileOpen(false)}
+                  className="h-12 rounded-full bg-lime-400 text-ink-900 font-semibold flex items-center justify-center"
+                >
+                  Masuk ke LIMMS
+                </Link>
+                <Link
+                  href="/daftar"
+                  onClick={() => setMobileOpen(false)}
+                  className="h-12 rounded-full border border-white/25 text-white font-semibold flex items-center justify-center hover:bg-white/10"
+                >
+                  Daftar akun
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       )}
     </header>
@@ -180,9 +200,8 @@ export function ModulePanels() {
                     setActive(idx);
                   }
                 }}
-                className={`relative rounded-[20px] overflow-hidden border border-white/15 bg-ink-700/60 cursor-pointer transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 flex flex-col justify-between p-6 ${
-                  isOpen ? 'flex-[3]' : 'flex-[0.85] hover:bg-ink-700'
-                }`}
+                className={`relative rounded-[20px] overflow-hidden border border-white/15 bg-ink-700/60 cursor-pointer transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 flex flex-col justify-between p-6 ${isOpen ? 'flex-[3]' : 'flex-[0.85] hover:bg-ink-700'
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-lime-400 tracking-wider">
@@ -272,6 +291,15 @@ export function ScrollTopButton() {
 
 export function DemoTriggerButton() {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open]);
 
   return (
     <>

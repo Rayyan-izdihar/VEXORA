@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Check } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { formatDate, daysOverdue } from '@/lib/format';
 import { LOAN_STATUSES, LOAN_ITEM_STATUSES } from '@/lib/status';
 import { Card } from '@/components/ui/Card';
@@ -16,6 +16,7 @@ export default async function PeminjamanDetailPage({ params }) {
   const user = await requireUser();
   const isStaff = user.role === 'administrator' || user.role === 'laboran';
   const { id } = await params;
+  if (!isValidUuid(id)) notFound();
 
   const { rows: loanRows } = await query(
     `SELECT l.*, u.name AS borrower_name, u.email AS borrower_email
@@ -43,7 +44,9 @@ export default async function PeminjamanDetailPage({ params }) {
     [id]
   );
 
-  const late = loan.status === 'borrowed' ? daysOverdue(loan.expected_return_date) : 0;
+  const late = ['borrowed', 'overdue'].includes(loan.status)
+    ? daysOverdue(loan.expected_return_date)
+    : 0;
   const displayStatus = late > 0 ? 'overdue' : loan.status;
 
   const steps = [
@@ -102,9 +105,8 @@ export default async function PeminjamanDetailPage({ params }) {
               return (
                 <div key={s.key} className="flex items-center gap-3">
                   <span
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      done ? 'bg-lime-400 text-ink-900' : 'bg-cream-100 text-ink-400'
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${done ? 'bg-lime-400 text-ink-900' : 'bg-cream-100 text-ink-400'
+                      }`}
                   >
                     {done ? <Check className="w-4 h-4" /> : idx + 1}
                   </span>

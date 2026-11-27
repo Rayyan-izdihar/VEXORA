@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Pencil, Wrench, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { formatDate, formatDateTime } from '@/lib/format';
 import {
   ASSET_CONDITIONS,
@@ -21,6 +21,7 @@ export default async function AsetDetailPage({ params }) {
   const user = await requireUser();
   const isStaff = user.role === 'administrator' || user.role === 'laboran';
   const { id } = await params;
+  if (!isValidUuid(id)) notFound();
 
   const { rows: assetRows } = await query(
     `SELECT a.*, c.name AS category_name, l.name AS location_name
@@ -42,9 +43,10 @@ export default async function AsetDetailPage({ params }) {
        JOIN loans l ON l.id = li.loan_id
        JOIN users u ON u.id = l.borrower_id
        WHERE li.asset_id = $1
+         ${isStaff ? '' : 'AND l.borrower_id = $2'}
        ORDER BY l.created_at DESC
        LIMIT 10`,
-      [id]
+      isStaff ? [id] : [id, user.id]
     ),
     query(
       `SELECT m.id, m.title, m.scheduled_at, m.completed_at, m.status, u.name AS assigned_name

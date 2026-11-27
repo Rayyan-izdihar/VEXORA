@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireApiUser, hashPassword } from '@/lib/auth';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function POST(request) {
   const auth = await requireApiUser(['administrator']);
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -19,8 +21,19 @@ export async function POST(request) {
         { status: 400 }
       );
     }
+    if (!EMAIL_REGEX.test(email)) {
+      return NextResponse.json({ error: 'Format email tidak valid.' }, { status: 400 });
+    }
     if (!['administrator', 'laboran', 'peminjam'].includes(role)) {
       return NextResponse.json({ error: 'Peran tidak valid.' }, { status: 400 });
+    }
+
+    const { rows: existing } = await query(
+      `SELECT 1 FROM users WHERE LOWER(email) = $1 LIMIT 1`,
+      [email]
+    );
+    if (existing.length > 0) {
+      return NextResponse.json({ error: 'Email tersebut sudah terdaftar.' }, { status: 409 });
     }
 
     const passwordHash = await hashPassword(password);

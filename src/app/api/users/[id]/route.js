@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
 
 export async function PATCH(request, { params }) {
@@ -7,6 +7,9 @@ export async function PATCH(request, { params }) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { id } = await params;
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: 'Pengguna tidak ditemukan.' }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
@@ -16,6 +19,12 @@ export async function PATCH(request, { params }) {
     if (body.role !== undefined) {
       if (!['administrator', 'laboran', 'peminjam'].includes(body.role)) {
         return NextResponse.json({ error: 'Peran tidak valid.' }, { status: 400 });
+      }
+      if (id === auth.user.id && body.role !== auth.user.role) {
+        return NextResponse.json(
+          { error: 'Anda tidak dapat mengubah peran akun Anda sendiri.' },
+          { status: 400 }
+        );
       }
       values.push(body.role);
       updates.push(`role = $${values.length}`);

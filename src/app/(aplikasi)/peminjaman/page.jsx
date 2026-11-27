@@ -27,7 +27,7 @@ export default async function PeminjamanListPage({ searchParams }) {
   if (tab === 'pending') {
     where.push(`l.status IN ('pending', 'approved')`);
   } else if (tab === 'active') {
-    where.push(`l.status = 'borrowed'`);
+    where.push(`l.status IN ('borrowed', 'overdue')`);
   } else if (tab === 'overdue') {
     where.push(`l.status IN ('borrowed', 'overdue') AND l.expected_return_date < CURRENT_DATE`);
   } else if (tab === 'completed') {
@@ -80,11 +80,10 @@ export default async function PeminjamanListPage({ searchParams }) {
           <Link
             key={t.key}
             href={t.key === 'all' ? '/peminjaman' : `/peminjaman?tab=${t.key}`}
-            className={`h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center transition-colors ${
-              tab === t.key
+            className={`h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center transition-colors ${tab === t.key
                 ? 'bg-ink-900 text-white'
                 : 'bg-white border border-line-200 text-ink-700 hover:bg-cream-100'
-            }`}
+              }`}
           >
             {t.label}
           </Link>
@@ -115,7 +114,9 @@ export default async function PeminjamanListPage({ searchParams }) {
               </thead>
               <tbody className="divide-y divide-line-200">
                 {loans.map((l) => {
-                  const late = l.status === 'borrowed' ? daysOverdue(l.expected_return_date) : 0;
+                  const late = ['borrowed', 'overdue'].includes(l.status)
+                    ? daysOverdue(l.expected_return_date)
+                    : 0;
                   const displayStatus = late > 0 ? 'overdue' : l.status;
                   return (
                     <tr

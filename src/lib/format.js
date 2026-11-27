@@ -33,6 +33,7 @@ export function formatNumber(num) {
 export function formatRelativeTime(dateInput) {
   if (!dateInput) return '-';
   const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return '-';
   const diffMs = d.getTime() - Date.now();
   const diffMins = Math.round(diffMs / 60000);
   const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'auto' });
@@ -43,12 +44,35 @@ export function formatRelativeTime(dateInput) {
   return rtf.format(diffDays, 'day');
 }
 
+function toYmdInTz(dateInput) {
+  if (!dateInput) return null;
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+}
+
 export function daysOverdue(expectedReturnDate) {
-  if (!expectedReturnDate) return 0;
-  const expected = new Date(expectedReturnDate);
-  const now = new Date();
-  expected.setHours(0, 0, 0, 0);
-  now.setHours(0, 0, 0, 0);
-  const diff = Math.floor((now - expected) / (1000 * 60 * 60 * 24));
+  const expectedYmd = toYmdInTz(expectedReturnDate);
+  const todayYmd = toYmdInTz(new Date());
+  if (!expectedYmd || !todayYmd) return 0;
+  const diff = Math.floor(
+    (Date.parse(`${todayYmd}T00:00:00Z`) - Date.parse(`${expectedYmd}T00:00:00Z`)) / 86400000
+  );
   return diff > 0 ? diff : 0;
+}
+
+export function toLocalDateInputValue(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function toLocalDateTimeInputValue(date = new Date()) {
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${toLocalDateInputValue(date)}T${h}:${min}`;
 }

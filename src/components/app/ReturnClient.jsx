@@ -160,6 +160,12 @@ export function ReturnClient({ pendingItems = [], historyRecords = [] }) {
             </div>
           </div>
         )
+      ) : historyRecords.length === 0 ? (
+        <EmptyState
+          icon={RotateCcw}
+          title="Belum ada riwayat pengembalian"
+          description="Catatan pengembalian peralatan akan muncul di sini."
+        />
       ) : (
         <div className="rounded-[20px] bg-white border border-line-200 overflow-hidden">
           <div className="overflow-x-auto">
