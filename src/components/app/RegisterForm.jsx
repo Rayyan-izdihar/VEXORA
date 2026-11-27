@@ -84,7 +84,7 @@ export function RegisterForm() {
           placeholder="Minimal 6 karakter"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="pr-12"
+          className="pr-12 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
         />
         <button
           type="button"

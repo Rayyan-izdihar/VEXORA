@@ -162,7 +162,7 @@ export function ModulePanels() {
   ];
 
   return (
-    <section id="modul" className="bg-ink-900 text-white py-20 px-6 sm:px-10 mt-20">
+    <section id="modul" className="bg-ink-900 text-white py-24 px-6 sm:px-10 mt-20">
       <div className="max-w-[1240px] mx-auto">
         <h2 className="text-[clamp(32px,4vw,48px)] font-semibold tracking-tight leading-[1.08] mb-10">
           Empat modul, satu alur kerja

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 
@@ -44,9 +44,10 @@ export function LoginForm() {
       {error && (
         <div
           role="alert"
-          className="rounded-[12px] bg-status-danger-bg text-status-danger-fg px-4 py-3 text-sm font-medium"
+          className="flex items-start gap-2.5 rounded-xl bg-status-danger-bg text-status-danger-fg px-4 py-3 text-sm"
         >
-          {error}
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>{error}</p>
         </div>
       )}
 
@@ -71,7 +72,7 @@ export function LoginForm() {
           placeholder="Masukkan kata sandi"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="pr-12"
+          className="pr-12 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden"
         />
         <button
           type="button"

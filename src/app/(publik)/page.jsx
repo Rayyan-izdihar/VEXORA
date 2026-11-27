@@ -69,7 +69,7 @@ export default async function LandingPage() {
       <LandingNavbar isLoggedIn={Boolean(user)} />
 
       {/* Section 1: Hero */}
-      <section id="beranda" className="px-6 sm:px-10 pt-6 pb-12">
+      <section id="beranda" className="px-6 sm:px-10 pt-24 pb-12">
         <div className="max-w-[1240px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           <div className="relative rounded-[28px] overflow-hidden min-h-[320px] lg:min-h-[600px] bg-ink-900">
             <Image
@@ -226,7 +226,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Section 4: Statistik Gelap */}
-      <section className="px-6 sm:px-10 py-14">
+      <section className="px-6 sm:px-10 pb-6">
         <div className="max-w-[1240px] mx-auto relative rounded-[28px] overflow-hidden bg-ink-900 text-white p-8 sm:p-14">
           <Image
             src="/images/lab-hero.jpg"
@@ -264,7 +264,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Section 5: Fitur Utama (Grid 2x4) */}
-      <section id="fitur" className="px-6 sm:px-10 py-14">
+      <section id="fitur" className="px-6 sm:px-10 pb-14 pt-30">
         <div className="max-w-[1240px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           <div className="lg:col-span-4 space-y-6">
             <h2 className="text-[clamp(30px,4vw,44px)] font-semibold tracking-[-0.03em] leading-[1.08]">
@@ -310,7 +310,7 @@ export default async function LandingPage() {
       <ModulePanels />
 
       {/* Section 7: Peran Pengguna */}
-      <section id="peran" className="px-6 sm:px-10 py-20">
+      <section id="peran" className="px-6 sm:px-10 pt-30">
         <div className="max-w-[1240px] mx-auto">
           <div className="text-center max-w-xl mx-auto mb-12">
             <h2 className="text-[clamp(30px,4vw,44px)] font-semibold tracking-[-0.03em] leading-[1.08]">
@@ -346,7 +346,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Section 8: Aturan yang Dijaga */}
-      <section id="aturan" className="px-6 sm:px-10 pb-16">
+      <section id="aturan" className="px-6 sm:px-10 pb-16 pt-28">
         <div className="max-w-[1240px] mx-auto rounded-[28px] bg-cream-100 p-8 sm:p-12">
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-8">
             Aturan konsistensi data yang dijaga sistem

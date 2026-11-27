@@ -180,7 +180,7 @@ export function ReportClient({
     const csvContent =
       '\uFEFF' +
       [headers, ...rows]
-        .map((r) => r.map(escapeCsvCell).join(','))
+        .map((r) => r.map(escapeCsvCell).join(';'))
         .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
