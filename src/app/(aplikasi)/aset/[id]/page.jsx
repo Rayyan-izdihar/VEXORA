@@ -14,6 +14,8 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { UploadedImage } from '@/components/ui/ImageUpload';
+import { AssetDetailActions } from '@/components/app/AssetDetailActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +26,8 @@ export default async function AsetDetailPage({ params }) {
   if (!isValidUuid(id)) notFound();
 
   const { rows: assetRows } = await query(
-    `SELECT a.*, c.name AS category_name, l.name AS location_name
+    `SELECT a.*, TO_CHAR(a.acquisition_date, 'YYYY-MM-DD') AS acquisition_date_ymd,
+            c.name AS category_name, l.name AS location_name
      FROM assets a
      JOIN categories c ON c.id = a.category_id
      LEFT JOIN locations l ON l.id = a.location_id
@@ -35,6 +38,20 @@ export default async function AsetDetailPage({ params }) {
 
   const asset = assetRows[0];
   if (!asset) notFound();
+
+  const serializedAsset = {
+    id: asset.id,
+    asset_code: asset.asset_code,
+    name: asset.name,
+    description: asset.description,
+    category_id: asset.category_id,
+    location_id: asset.location_id,
+    condition: asset.condition,
+    status: asset.status,
+    acquisition_date: asset.acquisition_date_ymd || null,
+    image_url: asset.image_url || null,
+    notes: asset.notes,
+  };
 
   const [loansRes, maintRes, damageRes] = await Promise.all([
     query(
@@ -58,7 +75,7 @@ export default async function AsetDetailPage({ params }) {
       [id]
     ),
     query(
-      `SELECT d.id, d.description, d.reported_at, d.status, u.name AS reporter_name
+      `SELECT d.id, d.description, d.image_url, d.reported_at, d.status, u.name AS reporter_name
        FROM damage_reports d
        LEFT JOIN users u ON u.id = d.reported_by
        WHERE d.asset_id = $1
@@ -101,6 +118,23 @@ export default async function AsetDetailPage({ params }) {
               <Badge map={ASSET_STATUSES} value={asset.status} />
               <Badge map={ASSET_CONDITIONS} value={asset.condition} />
             </div>
+
+            {asset.image_url && (
+              <div className="pt-5">
+                <a
+                  href={asset.image_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-[16px] overflow-hidden border border-line-200 bg-cream-50 max-h-72"
+                >
+                  <UploadedImage
+                    src={asset.image_url}
+                    alt={`Foto ${asset.name}`}
+                    className="w-full max-h-72 object-contain"
+                  />
+                </a>
+              </div>
+            )}
 
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-5 text-sm">
               <div>
@@ -199,12 +233,22 @@ export default async function AsetDetailPage({ params }) {
               ) : (
                 <div className="divide-y divide-line-200 text-sm">
                   {damageRes.rows.map((d) => (
-                    <div key={d.id} className="py-2.5 space-y-1">
+                    <div key={d.id} className="py-2.5 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs text-ink-600">{formatDate(d.reported_at)}</span>
                         <Badge map={DAMAGE_STATUSES} value={d.status} />
                       </div>
                       <p className="text-ink-900 line-clamp-2">{d.description}</p>
+                      {d.image_url && (
+                        <a
+                          href={d.image_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block text-xs font-semibold text-ink-700 underline"
+                        >
+                          Lihat foto bukti
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -244,6 +288,7 @@ export default async function AsetDetailPage({ params }) {
                 Laporkan kerusakan
               </Link>
             </div>
+            {isStaff && <AssetDetailActions asset={serializedAsset} />}
           </Card>
         </div>
       </div>

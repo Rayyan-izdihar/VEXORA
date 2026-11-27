@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useToast } from '@/components/ui/Toast';
 
 export function AssetForm({ initialData = null, categories = [], locations = [] }) {
@@ -23,6 +24,7 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
   const [acquisitionDate, setAcquisitionDate] = useState(
     initialData?.acquisition_date ? String(initialData.acquisition_date).slice(0, 10) : ''
   );
+  const [imageUrl, setImageUrl] = useState(initialData?.image_url || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [error, setError] = useState('');
@@ -46,6 +48,7 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
           condition,
           status,
           acquisition_date: acquisitionDate || null,
+          image_url: imageUrl || null,
           description,
           notes,
         }),
@@ -181,6 +184,13 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
         type="date"
         value={acquisitionDate}
         onChange={(e) => setAcquisitionDate(e.target.value)}
+      />
+
+      <ImageUpload
+        label="Foto kondisi aset (opsional)"
+        value={imageUrl}
+        onChange={setImageUrl}
+        helper="Unggah foto fisik perangkat untuk memudahkan verifikasi kondisi."
       />
 
       <Textarea

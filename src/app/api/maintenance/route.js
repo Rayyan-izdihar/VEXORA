@@ -58,8 +58,8 @@ export async function POST(request) {
       const reminderDate = new Date(scheduledDate.getTime() - reminderDays * 86400000);
 
       await client.query(
-        `INSERT INTO notifications (user_id, maintenance_schedule_id, title, message, scheduled_for, sent_at)
-         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        `INSERT INTO notifications (user_id, maintenance_schedule_id, title, message, link_url, scheduled_for, sent_at)
+         VALUES ($1, $2, $3, $4, '/pemeliharaan', $5, NOW())`,
         [
           assignedTo,
           created.id,

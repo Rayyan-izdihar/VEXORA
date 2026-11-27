@@ -20,7 +20,7 @@ export default async function NotifikasiPage() {
       <div>
         <h1 className="text-[28px] font-semibold tracking-tight text-ink-900">Notifikasi</h1>
         <p className="text-sm text-ink-600">
-          Pusat pemberitahuan jadwal pemeliharaan laboratorium
+          Pusat pemberitahuan peminjaman, pengembalian, kerusakan, dan pemeliharaan
         </p>
       </div>
       <NotificationsClient notifications={rows} />

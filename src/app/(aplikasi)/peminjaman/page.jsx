@@ -7,6 +7,7 @@ import { LOAN_STATUSES } from '@/lib/status';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { LoanFilterBar } from '@/components/app/LoanFilterBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,7 @@ export default async function PeminjamanListPage({ searchParams }) {
   const isStaff = user.role === 'administrator' || user.role === 'laboran';
   const sp = await searchParams;
   const tab = sp?.tab || 'all';
+  const q = (sp?.q || '').trim();
 
   const where = [];
   const params = [];
@@ -22,6 +24,13 @@ export default async function PeminjamanListPage({ searchParams }) {
   if (!isStaff) {
     params.push(user.id);
     where.push(`l.borrower_id = $${params.length}`);
+  }
+
+  if (q) {
+    params.push(`%${q}%`);
+    where.push(
+      `(l.loan_code ILIKE $${params.length} OR u.name ILIKE $${params.length} OR COALESCE(l.purpose, '') ILIKE $${params.length})`
+    );
   }
 
   if (tab === 'pending') {
@@ -75,29 +84,49 @@ export default async function PeminjamanListPage({ searchParams }) {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            href={t.key === 'all' ? '/peminjaman' : `/peminjaman?tab=${t.key}`}
-            className={`h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center transition-colors ${tab === t.key
-                ? 'bg-ink-900 text-white'
-                : 'bg-white border border-line-200 text-ink-700 hover:bg-cream-100'
-              }`}
-          >
-            {t.label}
-          </Link>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => {
+            const qs = new URLSearchParams();
+            if (t.key !== 'all') qs.set('tab', t.key);
+            if (q) qs.set('q', q);
+            const href = qs.toString() ? `/peminjaman?${qs.toString()}` : '/peminjaman';
+            return (
+              <Link
+                key={t.key}
+                href={href}
+                className={`h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center transition-colors ${
+                  tab === t.key
+                    ? 'bg-ink-900 text-white'
+                    : 'bg-white border border-line-200 text-ink-700 hover:bg-cream-100'
+                }`}
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
+        <LoanFilterBar initialQ={q} tab={tab} />
       </div>
 
       {loans.length === 0 ? (
-        <EmptyState
-          icon={ArrowLeftRight}
-          title="Belum ada transaksi peminjaman"
-          description="Mulai dengan mengajukan atau mencatat peminjaman peralatan laboratorium."
-          actionLabel={isStaff ? 'Catat peminjaman' : 'Ajukan peminjaman'}
-          actionHref="/peminjaman/baru"
-        />
+        q ? (
+          <EmptyState
+            icon={ArrowLeftRight}
+            title="Transaksi peminjaman tidak ditemukan"
+            description="Coba ubah kata kunci pencarian atau tampilkan semua peminjaman."
+            actionLabel="Reset pencarian"
+            actionHref={tab === 'all' ? '/peminjaman' : `/peminjaman?tab=${tab}`}
+          />
+        ) : (
+          <EmptyState
+            icon={ArrowLeftRight}
+            title="Belum ada transaksi peminjaman"
+            description="Mulai dengan mengajukan atau mencatat peminjaman peralatan laboratorium."
+            actionLabel={isStaff ? 'Catat peminjaman' : 'Ajukan peminjaman'}
+            actionHref="/peminjaman/baru"
+          />
+        )
       ) : (
         <div className="rounded-[20px] bg-white border border-line-200 overflow-hidden">
           <div className="overflow-x-auto">

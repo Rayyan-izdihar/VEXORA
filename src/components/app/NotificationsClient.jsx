@@ -122,14 +122,26 @@ export function NotificationsClient({ notifications = [] }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {n.maintenance_schedule_id && (
-                    <Link
-                      href="/pemeliharaan"
-                      className="text-xs font-semibold text-ink-900 underline"
-                    >
-                      Lihat jadwal
-                    </Link>
-                  )}
+                  {(() => {
+                    const targetUrl =
+                      n.link_url || (n.maintenance_schedule_id ? '/pemeliharaan' : null);
+                    if (!targetUrl) return null;
+                    const linkLabel = targetUrl.startsWith('/peminjaman')
+                      ? 'Lihat transaksi'
+                      : targetUrl.startsWith('/kerusakan')
+                        ? 'Lihat laporan'
+                        : targetUrl.startsWith('/pemeliharaan')
+                          ? 'Lihat jadwal'
+                          : 'Lihat detail';
+                    return (
+                      <Link
+                        href={targetUrl}
+                        className="text-xs font-semibold text-ink-900 underline"
+                      >
+                        {linkLabel}
+                      </Link>
+                    );
+                  })()}
                   {unread && (
                     <Button variant="ghost" size="sm" onClick={() => markOneRead(n.id)}>
                       Tandai dibaca

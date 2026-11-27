@@ -20,7 +20,7 @@ export default async function PengembalianPage() {
       ORDER BY l.expected_return_date ASC
     `),
     query(`
-      SELECT rr.id, rr.return_date, rr.condition_after,
+      SELECT rr.id, rr.return_date, rr.condition_after, rr.image_url,
              a.asset_code, a.name AS asset_name,
              ub.name AS borrower_name,
              ur.name AS receiver_name

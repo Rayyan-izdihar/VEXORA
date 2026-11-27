@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withTransaction, isValidUuid } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth';
+import { DAMAGE_STATUSES, getStatusMeta } from '@/lib/status';
+import { notifyUsers } from '@/lib/notifications';
 
 export async function PATCH(request, { params }) {
   const auth = await requireApiUser(['administrator', 'laboran']);
@@ -29,7 +31,11 @@ export async function PATCH(request, { params }) {
 
     const updated = await withTransaction(async (client) => {
       const { rows } = await client.query(
-        `SELECT * FROM damage_reports WHERE id = $1 FOR UPDATE`,
+        `SELECT d.*, a.asset_code, a.name AS asset_name
+         FROM damage_reports d
+         JOIN assets a ON a.id = d.asset_id
+         WHERE d.id = $1
+         FOR UPDATE OF d`,
         [id]
       );
       const current = rows[0];
@@ -50,15 +56,26 @@ export async function PATCH(request, { params }) {
         [status, nextNotes, resolvedAt, id]
       );
 
-        if (assetCondition) {
-          await client.query(
-            `UPDATE assets SET condition = $1, updated_at = NOW() WHERE id = $2`,
-            [assetCondition, current.asset_id]
-          );
-        }
+      if (assetCondition) {
+        await client.query(
+          `UPDATE assets SET condition = $1, updated_at = NOW() WHERE id = $2`,
+          [assetCondition, current.asset_id]
+        );
+      }
 
-        return updatedRows[0];
-      });
+      if (current.reported_by && current.reported_by !== auth.user.id && status !== current.status) {
+        const statusLabel = getStatusMeta(DAMAGE_STATUSES, status).label;
+        await notifyUsers(client, {
+          userIds: [current.reported_by],
+          title: 'Status laporan kerusakan diperbarui',
+          message: `Laporan kerusakan ${current.asset_code} (${current.asset_name}) kini berstatus "${statusLabel}".${nextNotes ? ` Catatan: ${nextNotes}` : ''}`,
+          linkUrl: '/kerusakan',
+          damageReportId: id,
+        });
+      }
+
+      return updatedRows[0];
+    });
 
     if (!updated) {
       return NextResponse.json({ error: 'Laporan tidak ditemukan.' }, { status: 404 });
