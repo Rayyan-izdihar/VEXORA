@@ -39,7 +39,7 @@ export async function GET(request) {
          AND l.loan_date <= $1::date
          AND GREATEST(
            l.expected_return_date,
-           CASE WHEN l.status IN ('borrowed', 'overdue') THEN CURRENT_DATE ELSE l.expected_return_date END
+           CASE WHEN l.status IN ('borrowed', 'overdue') THEN (NOW() AT TIME ZONE 'Asia/Makassar')::date ELSE l.expected_return_date END
          ) >= $2::date`,
       [expectedReturnDate, loanDate]
     );

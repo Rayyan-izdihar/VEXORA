@@ -73,7 +73,7 @@ export async function POST(request, { params }) {
              AND l.loan_date <= $3::date
              AND GREATEST(
                l.expected_return_date,
-               CASE WHEN l.status IN ('borrowed', 'overdue') THEN CURRENT_DATE ELSE l.expected_return_date END
+               CASE WHEN l.status IN ('borrowed', 'overdue') THEN (NOW() AT TIME ZONE 'Asia/Makassar')::date ELSE l.expected_return_date END
              ) >= $4::date`,
           [assetIds, id, loan.expected_return_date, loan.loan_date]
         );
@@ -188,6 +188,30 @@ export async function POST(request, { params }) {
           const names = unavailable.map((a) => `${a.name} (${a.asset_code})`).join(', ');
           return {
             error: `Tidak dapat menyerahkan: ${names} baru saja dipinjam orang lain atau tidak tersedia.`,
+            status: 409,
+          };
+        }
+
+        const { rows: handoverConflicts } = await client.query(
+          `SELECT a.asset_code, a.name
+           FROM loan_items li
+           JOIN loans l ON l.id = li.loan_id
+           JOIN assets a ON a.id = li.asset_id
+           WHERE li.asset_id = ANY($1::uuid[])
+             AND l.id != $2
+             AND l.status IN ('approved', 'borrowed', 'overdue')
+             AND li.item_status IN ('approved', 'borrowed')
+             AND l.loan_date <= $3::date
+             AND GREATEST(
+               l.expected_return_date,
+               CASE WHEN l.status IN ('borrowed', 'overdue') THEN (NOW() AT TIME ZONE 'Asia/Makassar')::date ELSE l.expected_return_date END
+             ) >= $4::date`,
+          [assetIds, id, loan.expected_return_date, loan.loan_date]
+        );
+        if (handoverConflicts.length > 0) {
+          const names = [...new Set(handoverConflicts.map((c) => `${c.name} (${c.asset_code})`))].join(', ');
+          return {
+            error: `Tidak dapat menyerahkan: jadwal bentrok dengan transaksi lain untuk ${names}.`,
             status: 409,
           };
         }

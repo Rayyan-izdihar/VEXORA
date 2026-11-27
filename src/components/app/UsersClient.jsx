@@ -367,7 +367,7 @@ export function UsersClient({ users = [], currentUserId }) {
         }}
         title={`Reset kata sandi ${resetTarget?.name}?`}
         description={`Masukkan kata sandi baru untuk akun ${resetTarget?.email || ''}.`}
-        cancelLabel="Batal"
+        hideFooter
         loading={resetting}
       >
         <form onSubmit={handleResetPassword} className="space-y-4">
@@ -401,7 +401,18 @@ export function UsersClient({ users = [], currentUserId }) {
               {showResetPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="secondary"
+              disabled={resetting}
+              onClick={() => {
+                setResetTarget(null);
+                setResetPassword('');
+                setResetError('');
+              }}
+            >
+              Batal
+            </Button>
             <Button type="submit" variant="primary" loading={resetting}>
               Simpan kata sandi baru
             </Button>

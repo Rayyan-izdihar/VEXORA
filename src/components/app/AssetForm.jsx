@@ -7,6 +7,7 @@ import { Input, Textarea, Select } from '@/components/ui/Input';
 import { Combobox } from '@/components/ui/Combobox';
 import { Button } from '@/components/ui/Button';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { toYmdInTz } from '@/lib/format';
 import { useToast } from '@/components/ui/Toast';
 
 export function AssetForm({ initialData = null, categories = [], locations = [] }) {
@@ -22,7 +23,7 @@ export function AssetForm({ initialData = null, categories = [], locations = [] 
   const [condition, setCondition] = useState(initialData?.condition || 'good');
   const [status, setStatus] = useState(initialData?.status || 'available');
   const [acquisitionDate, setAcquisitionDate] = useState(
-    initialData?.acquisition_date ? String(initialData.acquisition_date).slice(0, 10) : ''
+    initialData?.acquisition_date ? (toYmdInTz(initialData.acquisition_date) || '') : ''
   );
   const [imageUrl, setImageUrl] = useState(initialData?.image_url || '');
   const [description, setDescription] = useState(initialData?.description || '');

@@ -13,6 +13,7 @@ export function Modal({
   confirmVariant = 'danger',
   onConfirm,
   loading = false,
+  hideFooter = false,
   children,
 }) {
   const dialogRef = useRef(null);
@@ -58,16 +59,18 @@ return (
       <h3 className="text-xl font-semibold text-ink-900 tracking-tight">{title}</h3>
       {description && <p className="mt-2 text-sm text-ink-600 leading-relaxed">{description}</p>}
       {children && <div className="mt-4">{children}</div>}
-      <div className="mt-6 flex items-center justify-end gap-3">
-        <Button variant="secondary" onClick={onClose} disabled={loading}>
-          {cancelLabel}
-        </Button>
-        {onConfirm && (
-          <Button variant={confirmVariant} onClick={onConfirm} loading={loading}>
-            {confirmLabel}
+      {!hideFooter && (
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
+            {cancelLabel}
           </Button>
-        )}
-      </div>
+          {onConfirm && (
+            <Button variant={confirmVariant} onClick={onConfirm} loading={loading}>
+              {confirmLabel}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   </div>
 );

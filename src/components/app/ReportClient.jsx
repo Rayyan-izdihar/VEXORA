@@ -235,7 +235,13 @@ export function ReportClient({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setStartDate(nextStart);
+                if (endDate && nextStart && nextStart > endDate) {
+                  setEndDate(nextStart);
+                }
+              }}
               className="h-10 px-3 rounded-[12px] border border-line-200 text-sm bg-white font-normal text-ink-900"
             />
           </label>

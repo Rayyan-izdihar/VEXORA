@@ -5,6 +5,12 @@ import { requireApiUser } from '@/lib/auth';
 const VALID_CONDITIONS = ['good', 'needs_attention', 'damaged'];
 const VALID_CREATE_STATUSES = ['available', 'maintenance', 'inactive'];
 
+function isValidIsoDate(str) {
+  if (typeof str !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const parsed = new Date(`${str}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === str;
+}
+
 export async function GET(request) {
   const auth = await requireApiUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -86,6 +92,9 @@ export async function POST(request) {
     if (!isValidUploadUrl(imageUrl)) {
       return NextResponse.json({ error: 'URL foto aset tidak valid.' }, { status: 400 });
     }
+    if (acquisitionDate !== null && !isValidIsoDate(String(acquisitionDate))) {
+      return NextResponse.json({ error: 'Format tanggal perolehan tidak valid.' }, { status: 400 });
+    }
 
     const { rows } = await query(
       `INSERT INTO assets (asset_code, name, description, category_id, location_id, condition, status, acquisition_date, image_url, notes)
@@ -108,8 +117,8 @@ export async function POST(request) {
           { status: 400 }
         );
       }
-      if (err.code === '22P02') {
-        return NextResponse.json({ error: 'Format data tidak valid.' }, { status: 400 });
+      if (err.code === '22P02' || err.code === '22007' || err.code === '22008') {
+        return NextResponse.json({ error: 'Format data atau tanggal tidak valid.' }, { status: 400 });
       }
       console.error('Create asset error:', err);
       return NextResponse.json(

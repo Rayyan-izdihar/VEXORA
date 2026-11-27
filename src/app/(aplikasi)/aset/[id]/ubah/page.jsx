@@ -11,13 +11,24 @@ export default async function UbahAsetPage({ params }) {
   if (!isValidUuid(id)) notFound();
 
   const [assetRes, catRes, locRes] = await Promise.all([
-    query(`SELECT * FROM assets WHERE id = $1 LIMIT 1`, [id]),
+    query(
+      `SELECT *, TO_CHAR(acquisition_date, 'YYYY-MM-DD') AS acquisition_date_ymd
+       FROM assets
+       WHERE id = $1
+       LIMIT 1`,
+      [id]
+    ),
     query(`SELECT id, name FROM categories ORDER BY name ASC`),
     query(`SELECT id, name FROM locations ORDER BY name ASC`),
   ]);
 
   const asset = assetRes.rows[0];
   if (!asset) notFound();
+
+  const initialAsset = {
+    ...asset,
+    acquisition_date: asset.acquisition_date_ymd || null,
+  };
 
   return (
     <div className="space-y-6">
@@ -27,7 +38,7 @@ export default async function UbahAsetPage({ params }) {
         </h1>
         <p className="text-sm text-ink-600">Perbarui data, lokasi, atau kondisi aset</p>
       </div>
-      <AssetForm initialData={asset} categories={catRes.rows} locations={locRes.rows} />
+      <AssetForm initialData={initialAsset} categories={catRes.rows} locations={locRes.rows} />
     </div>
   );
 }

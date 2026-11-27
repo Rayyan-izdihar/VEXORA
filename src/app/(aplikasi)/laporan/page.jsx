@@ -9,7 +9,9 @@ export default async function LaporanPage() {
 
   const [assetsRes, maintRes, damageRes, loansRes, categoriesRes] = await Promise.all([
     query(`
-      SELECT a.*, c.name AS category_name, l.name AS location_name
+      SELECT a.id, a.asset_code, a.name, a.condition, a.status, a.created_at,
+             TO_CHAR(a.acquisition_date, 'YYYY-MM-DD') AS acquisition_date,
+             c.name AS category_name, l.name AS location_name
       FROM assets a
       JOIN categories c ON c.id = a.category_id
       LEFT JOIN locations l ON l.id = a.location_id
@@ -31,7 +33,10 @@ export default async function LaporanPage() {
       ORDER BY d.reported_at DESC
     `),
     query(`
-      SELECT l.*, u.name AS borrower_name
+      SELECT l.id, l.loan_code, l.status,
+             TO_CHAR(l.loan_date, 'YYYY-MM-DD') AS loan_date,
+             TO_CHAR(l.expected_return_date, 'YYYY-MM-DD') AS expected_return_date,
+             u.name AS borrower_name
       FROM loans l
       JOIN users u ON u.id = l.borrower_id
       ORDER BY l.created_at DESC

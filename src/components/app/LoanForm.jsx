@@ -145,6 +145,9 @@ export function LoanForm({
         if (Array.isArray(data.conflictAssetIds) && data.conflictAssetIds.length > 0) {
           setSelectedIds((prev) => prev.filter((id) => !data.conflictAssetIds.includes(id)));
         }
+        if (res.status === 409) {
+          router.refresh();
+        }
         setLoading(false);
         return;
       }
@@ -158,6 +161,15 @@ export function LoanForm({
     }
   }
 
+  const preselectedAsset = preselectedAssetId
+    ? assets.find((a) => a.id === preselectedAssetId)
+    : null;
+  const preselectedUnavailableOnCurrentDates = Boolean(
+    preselectedAsset &&
+      selectedIds.length === 0 &&
+      !isAssetSelectable(preselectedAsset, loanDate, expectedReturnDate, directBorrow)
+  );
+
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       <div className="lg:col-span-8 rounded-[28px] bg-cream-100 p-6 sm:p-8 space-y-6">
@@ -168,6 +180,12 @@ export function LoanForm({
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {preselectedUnavailableOnCurrentDates && !error && (
+          <div className="rounded-[12px] bg-status-warning-bg text-status-warning-fg px-4 py-3 text-sm font-medium">
+            Aset <strong>{preselectedAsset.asset_code} ({preselectedAsset.name})</strong> sedang tidak tersedia pada tanggal yang dipilih. Ubah tanggal pinjam untuk melakukan booking di jadwal lain.
           </div>
         )}
 

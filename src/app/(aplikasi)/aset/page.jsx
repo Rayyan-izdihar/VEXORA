@@ -211,6 +211,13 @@ export default async function AsetListPage({ searchParams }) {
                           >
                             Pinjam
                           </Link>
+                        ) : a.status !== 'inactive' ? (
+                          <Link
+                            href={`/peminjaman/baru?asset=${a.id}`}
+                            className="h-8 px-3 rounded-full border border-line-200 bg-white text-ink-700 text-xs font-semibold inline-flex items-center hover:bg-cream-100"
+                          >
+                            Booking
+                          </Link>
                         ) : null}
                       </div>
                     </td>

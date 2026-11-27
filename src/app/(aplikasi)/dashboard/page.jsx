@@ -191,7 +191,7 @@ export const dynamic = 'force-dynamic';
       SELECT COUNT(*)::int AS cnt
       FROM loans
       WHERE status IN ('borrowed', 'overdue')
-        AND expected_return_date < CURRENT_DATE
+        AND expected_return_date < (NOW() AT TIME ZONE 'Asia/Makassar')::date
     `),
       query(`SELECT COUNT(*)::int AS cnt FROM loans WHERE status = 'pending'`),
       query(`

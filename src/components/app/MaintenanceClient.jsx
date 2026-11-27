@@ -73,6 +73,7 @@ export function MaintenanceClient({
         }
         showToast('Jadwal dibuat');
         setCreateOpen(false);
+        setAssetId('');
         setTitle('');
         setDescription('');
         setSaving(false);
@@ -90,7 +91,7 @@ export function MaintenanceClient({
         const res = await fetch(`/api/maintenance/${detailItem.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, notes: resultNotes || undefined }),
+          body: JSON.stringify({ status, notes: resultNotes }),
         });
         const data = await res.json();
         if (!res.ok) {

@@ -38,7 +38,9 @@ export default async function PeminjamanListPage({ searchParams }) {
   } else if (tab === 'active') {
     where.push(`l.status IN ('borrowed', 'overdue')`);
   } else if (tab === 'overdue') {
-    where.push(`l.status IN ('borrowed', 'overdue') AND l.expected_return_date < CURRENT_DATE`);
+    where.push(
+      `l.status IN ('borrowed', 'overdue') AND l.expected_return_date < (NOW() AT TIME ZONE 'Asia/Makassar')::date`
+    );
   } else if (tab === 'completed') {
     where.push(`l.status IN ('completed', 'rejected', 'cancelled')`);
   }

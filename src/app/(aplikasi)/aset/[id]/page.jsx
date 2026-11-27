@@ -262,13 +262,17 @@ export default async function AsetDetailPage({ params }) {
           <Card variant="dark" className="space-y-4">
             <h2 className="text-lg font-semibold text-white">Tindakan cepat</h2>
             <div className="space-y-2.5">
-              {asset.status === 'available' && (
+              {asset.status !== 'inactive' && (
                 <Link
                   href={`/peminjaman/baru?asset=${asset.id}`}
                   className="w-full h-11 px-4 rounded-full bg-lime-400 text-ink-900 font-semibold text-sm flex items-center gap-2.5 hover:bg-lime-500"
                 >
                   <ArrowLeftRight className="w-4 h-4" />
-                  {isStaff ? 'Pinjamkan aset ini' : 'Ajukan peminjaman'}
+                  {asset.status === 'available'
+                    ? isStaff
+                      ? 'Pinjamkan aset ini'
+                      : 'Ajukan peminjaman'
+                    : 'Jadwalkan / Booking'}
                 </Link>
               )}
               {isStaff && (

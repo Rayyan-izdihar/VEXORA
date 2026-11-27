@@ -70,11 +70,11 @@ export async function syncOverdueLoanNotifications() {
     const [dueLoansRes, staffRes] = await Promise.all([
       query(`
         SELECT l.id, l.loan_code, l.borrower_id, l.expected_return_date, u.name AS borrower_name,
-               (CURRENT_DATE - l.expected_return_date)::int AS days_late
+               ((NOW() AT TIME ZONE 'Asia/Makassar')::date - l.expected_return_date)::int AS days_late
         FROM loans l
         JOIN users u ON u.id = l.borrower_id
         WHERE l.status IN ('borrowed', 'overdue')
-          AND l.expected_return_date <= CURRENT_DATE
+          AND l.expected_return_date <= (NOW() AT TIME ZONE 'Asia/Makassar')::date
       `),
       query(`
         SELECT id FROM users
@@ -118,7 +118,7 @@ export async function syncOverdueLoanNotifications() {
              WHERE user_id = $1
                AND loan_id = $2
                AND title = $3
-               AND created_at::date = CURRENT_DATE
+               AND (created_at AT TIME ZONE 'Asia/Makassar')::date = (NOW() AT TIME ZONE 'Asia/Makassar')::date
            )`,
           [target.userId, loan.id, title, target.message, linkUrl]
         );
