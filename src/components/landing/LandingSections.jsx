@@ -14,14 +14,6 @@ import { ArrowPill } from '@/components/ui/ArrowPill';
 export function LandingNavbar({ isLoggedIn }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navLinks = [
-    { href: '#beranda', label: 'Beranda' },
-    { href: '#fitur', label: 'Fitur' },
-    { href: '#modul', label: 'Modul' },
-    { href: '#peran', label: 'Peran' },
-    { href: '#aturan', label: 'Bantuan' },
-  ];
-
   return (
     <header className="sticky top-4 z-40 px-4 sm:px-6">
       <nav
@@ -35,15 +27,9 @@ export function LandingNavbar({ isLoggedIn }) {
           <span className="font-bold tracking-tight text-ink-900">LIMMS</span>
         </Link>
 
-        <ul className="hidden md:flex items-center gap-6 text-sm font-medium text-ink-700">
-          {navLinks.map((item) => (
-            <li key={item.href}>
-              <a href={item.href} className="hover:text-ink-900 transition-colors">
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <span className="hidden md:inline-flex items-center px-3.5 py-1 rounded-full bg-cream-100 border border-line-200 text-xs font-medium text-ink-700">
+          Sistem Inventaris &amp; Pemeliharaan Lab
+        </span>
 
         <div className="hidden md:flex items-center gap-3">
           {isLoggedIn ? (
